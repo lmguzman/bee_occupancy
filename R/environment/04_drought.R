@@ -70,4 +70,64 @@ for(year in 1895:2021){
 
 drought_all <- rbindlist(drought_list)
 
-saveRDS(drought_all, "clean_data/drought/outputs/drought_all.rds")
+saveRDS(drought_all, "clean_data/drought/drought_all.rds")
+
+
+
+
+
+############# add sites to drought values ##########
+## only works for US
+
+drought_all <- readRDS("clean_data/drought/drought_all.rds")
+
+drought_sites <- function(resolution){
+  
+  ### load sites 
+  
+  sites <- readRDS(paste0("clean_data/sites/sites_US_",resolution, ".rds"))
+  
+  ## lat and long of observations
+  
+  unique_lat_lon <- lat_lon <- distinct(drought_all[,.(lon, lat)])
+  
+  coordinates(lat_lon) <- ~ lon + lat
+  
+  proj4string(lat_lon) <- proj4string(sites)
+  
+  # get site number for each observation
+  
+  unique_lat_lon[, "site" := over(lat_lon, sites)]
+  
+  setkeyv(unique_lat_lon, c('lon', 'lat'))
+  setkeyv(drought_all, c('lon', 'lat'))
+  
+  drought_site <- drought_all[unique_lat_lon]
+  
+  drought_site_2 <- drought_site[!is.na(site)]
+  
+  drought_site_3 <- drought_site_2[, .(mean(V1), min(V2), max(V3), var(V1)), by = c("year","site")]
+  
+  colnames(drought_site_3) <- c("year", "site", "mean_drought", "min_drought", "max_drought", "var_drought")
+  
+  saveRDS(drought_site_3, file = paste0("clean_data/drought/drought_US_",resolution, ".rds"))
+  
+}
+
+
+
+### drought only for the US no option for country
+
+## assign sites for 100km resolution
+
+drought_sites(100)
+
+## assign sites for 50km resolution
+
+drought_sites(50)
+
+
+
+
+
+

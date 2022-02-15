@@ -67,9 +67,8 @@ extract_values_all_rasters <- function(resolution, countries){
   sites <- readRDS(paste0("clean_data/sites/sites_", countries,"_",resolution, ".rds"))
   
   ## run the extraction
-  inputDir <- "/Volumes/Rasters/SFU/insect_change/R/climate/crop_rasters"
   
-  #inputDir <- "/Volumes/Rasters/USC/bee_occupancy/raw_data/climate/crop_rasters"
+  inputDir <- "/Volumes/Rasters/USC/bee_occupancy/raw_data/climate/crop_rasters"
   
   files <- list.files(inputDir, pattern = '.tif$', full.names = TRUE)
   
