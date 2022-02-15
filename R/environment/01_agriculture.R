@@ -99,4 +99,4 @@ for(year in c(2001, 2004, 2006, 2008, 2011, 2013, 2016)){
 
 all_crop_values_year <-rbindlist(all_crop_values)
 
-saveRDS(all_crop_values_year, 'clean_data/agriculture/all_crop_areas_year.rds')
+saveRDS(all_crop_values_year, 'clean_data/agriculture/agriculture.rds')
