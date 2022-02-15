@@ -88,3 +88,110 @@ saveRDS(gen_toxic_all, "clean_data/pesticide/gen_toxic_county.rds")
 saveRDS(pyrethroid_all, "clean_data/pesticide/pyrethroid_county.rds")
 saveRDS(neonics_all, "clean_data/pesticide/neonics_county.rds")
 
+
+
+
+
+######## add pesticide data to sites ####
+
+## pesticide data only for US
+
+### county map data ##
+
+### download county map from https://www.census.gov/geographies/mapping-files/time-series/geo/carto-boundary-file.html
+
+# Load shapefile
+
+us_counties <- read_sf('/Volumes/Rasters/USC/bee_occupancy/raw_data/pesticide/cb_2018_us_county_20m/cb_2018_us_county_20m.shp')
+
+## select only county and state codes
+
+state_county_fp <- us_counties[,c("STATEFP", "COUNTYFP")]
+
+spdf <- as_Spatial(state_county_fp)
+
+
+## load pesticide data
+neonics_all <- readRDS("clean_data/pesticide/neonics_county.rds")
+gen_toxic_all <- readRDS("clean_data/pesticide/gen_toxic_county.rds")
+pyrethroid_all <- readRDS("clean_data/pesticide/pyrethroid_county.rds")
+
+
+pest_sites <- function(resolution){
+  
+  ## load sites
+  
+  sites <- readRDS(paste0("clean_data/sites/sites_US_",resolution, ".rds"))
+  
+  ## reproject sites to county crs
+  
+  prj3<-"+proj=longlat +datum=NAD83 +no_defs"
+  
+  sites_t <- spTransform(sites, CRS(prj3))
+  
+  ## find the counties per site
+  
+  sites_per_county <- over(spdf, sites_t)
+  
+  site_county <- data.frame(STATE_FIPS_CODE = as.integer(state_county_fp$STATEFP), COUNTY_FIPS_CODE = as.integer(state_county_fp$COUNTYFP),
+                            site = sites_per_county) %>% 
+    data.table()
+  
+  ## set joining keys
+  setkeyv(site_county, c("STATE_FIPS_CODE", "COUNTY_FIPS_CODE"))
+  setkeyv(gen_toxic_all, c("STATE_FIPS_CODE", "COUNTY_FIPS_CODE"))
+  setkeyv(pyrethroid_all, c("STATE_FIPS_CODE", "COUNTY_FIPS_CODE"))
+  setkeyv(neonics_all, c("STATE_FIPS_CODE", "COUNTY_FIPS_CODE"))
+  
+  
+  # perform the join, eliminating not matched rows from Right
+  
+  names_df <- c("year", "site", "compund", "epest_high", "epest_low")
+  
+  ## organophosphates
+  
+  gen_toxic_site <- gen_toxic_all[site_county][!is.na(COMPOUND) & !is.na(site)]
+
+  gen_toxic_site_year <- gen_toxic_site[, .(mean(EPEST_HIGH_KG, na.rm = TRUE), mean(EPEST_LOW_KG, na.rm = TRUE)), by = .(YEAR, site, COMPOUND)]
+
+  colnames(gen_toxic_site_year) <- names_df
+  
+  saveRDS(gen_toxic_site_year, file = paste0("clean_data/pesticide/gen_toxic_US_",resolution, ".rds"))
+  
+  
+  ### pyrethroid
+  
+  pyrethroid_site <- pyrethroid_all[site_county][!is.na(COMPOUND) & !is.na(site)]
+
+  pyrethroid_site_year <- pyrethroid_site[, .(mean(EPEST_HIGH_KG, na.rm = TRUE), mean(EPEST_LOW_KG, na.rm = TRUE)), by = .(YEAR, site, COMPOUND)]
+
+  colnames(pyrethroid_site_year) <- names_df
+  
+  saveRDS(pyrethroid_site_year, file = paste0("clean_data/pesticide/pyrethroid_US_",resolution, ".rds"))
+
+  ## neonics
+  
+  neonics_site <- neonics_all[site_county][!is.na(COMPOUND) & !is.na(site)]
+
+  neonics_site_year <- neonics_site[, .(mean(EPEST_HIGH_KG, na.rm = TRUE), mean(EPEST_LOW_KG, na.rm = TRUE)), by = .(YEAR, site, COMPOUND)]
+
+  colnames(neonics_site_year) <- names_df
+  
+  saveRDS(neonics_site_year, file = paste0("clean_data/pesticide/neonics_US_",resolution, ".rds"))
+  
+}
+
+
+### pesticide only for the US no option for country
+
+## assign sites for 100km resolution
+
+pest_sites(100)
+
+## assign sites for 50km resolution
+
+pest_sites(50)
+
+
+
+

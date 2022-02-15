@@ -124,3 +124,96 @@ pyrethroid_site_year <- readRDS("R/pesticide/outputs/pyrethroid_site_year.rds")
 neonics_site_year <- readRDS("R/pesticide/outputs/neonics_site_year.rds")
 
 
+
+############# drought ##########
+
+### load sites 
+
+sites <- readRDS("data/clean_data/sites.rds")
+
+
+## lat and long of observations
+
+lat_lon <- distinct(drought_all[,.(lon, lat)])
+
+coordinates(lat_lon) <- ~ lon + lat
+
+proj4string(lat_lon) <- proj4string(sites)
+
+# get site number for each observation
+
+unique_lat_lon <- distinct(drought_all[,.(lon, lat)])
+
+unique_lat_lon[, site := over(lat_lon, sites)]
+
+setkeyv(unique_lat_lon, c('lon', 'lat'))
+setkeyv(drought_all, c('lon', 'lat'))
+
+drought_site <- drought_all[unique_lat_lon]
+
+drought_site_2 <- drought_site[!is.na(site)]
+
+drought_site_3 <- drought_site_2[, .(mean(V1), min(V2), max(V3), var(V1)), by = c("year","site")]
+
+colnames(drought_site_3) <- c("year", "site", "mean_drought", "min_drought", "max_drought", "var_drought")
+
+saveRDS(drought_site_3, "R/drought/outputs/drought_site.rds")
+
+
+
+
+
+
+
+
+
+
+####### climate ######
+
+
+#### cropping all rasters ######
+
+## FYI, this takes a while to run on my flimsy computer
+
+extract_values_site <- function(i){
+  #load raster
+  r <- raster(files[i])
+  
+  #extract values for site
+  x1 <- exact_extract(r, sites,fun="mean")
+  
+  ## file name
+  
+  split_name <- unlist(str_split(files[i], "_"))
+  
+  #remove -99999.00000 and calculate mean
+  #bio01_mean_values <- sapply(x1, FUN = function(x) mean(x[x !=-32768]))
+  
+  bio01_1_year <- data.frame(sites = sites@data, values= x1, year = split_name[4],
+                             month = split_name[5], variable = split_name[3])
+  
+  return(bio01_1_year)
+}
+
+
+sites <- readRDS("data/clean_data/sites.rds")
+
+inputDir <- "/Volumes/Rasters/SFU/insect_change/R/climate/crop_rasters"
+outputDir <- "R/climate/outputs"
+
+files <- list.files(inputDir, pattern = '.tif$', full.names = TRUE)
+
+all_site_envirem <- mclapply(1:length(files), extract_values_site, mc.cores = 2)
+
+saveRDS(all_site_envirem, file = "R/climate/outputs/climate.rds")
+
+all_site_envirem <- readRDS(file = "R/climate/outputs/climate.rds")
+
+
+
+
+
+
+
+
+

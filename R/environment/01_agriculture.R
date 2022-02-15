@@ -100,3 +100,63 @@ for(year in c(2001, 2004, 2006, 2008, 2011, 2013, 2016)){
 all_crop_values_year <-rbindlist(all_crop_values)
 
 saveRDS(all_crop_values_year, 'clean_data/agriculture/agriculture.rds')
+
+
+
+###### join agricultural data with sites #####
+
+## load all crop values
+
+agriculture <- readRDS('clean_data/agriculture/agriculture.rds')
+
+agri_sites <- function(resolution){
+  
+  sites <- readRDS(paste0("clean_data/sites/sites_US_",resolution, ".rds"))
+  
+  ### figure out which categories fall on which sites
+  
+  lat_lon <- agriculture[,.(x, y)]
+  
+  coordinates(lat_lon) <- ~ x + y
+  
+  proj4string(lat_lon) <- proj4string(sites)
+  
+  # get site number for each observation
+  
+  agriculture[, site := over(lat_lon, sites)]
+  
+  agriculture_with_site <- agriculture[!is.na(site)]
+  
+  agriculture_with_site$crop_pres <- 1
+  
+  ## calculate the number of crop units per site and year
+  
+  crop_pres_year_site <- agriculture_with_site[, sum(crop_pres), by = .(year, site)]
+  
+  site_area <- readRDS(paste0("clean_data/sites/area_US_",resolution, ".rds"))
+  
+  ## weight number of crop units by area of sites
+  
+  crop_units_area <- crop_pres_year_site %>% 
+    left_join(site_area) %>% 
+    mutate(crop_units_area = V1/area) %>% 
+    mutate(scaled_crop_units = scale(crop_units_area, center = FALSE))
+  
+  saveRDS(crop_units_area, file = paste0("clean_data/agriculture/agriculture_US_",resolution, ".rds"))
+}
+
+### agriculture only for the US no option for country
+
+## assign sites for 100km resolution
+
+agri_sites(100)
+
+## assign sites for 50km resolution
+
+agri_sites(50)
+
+
+
+
+
+

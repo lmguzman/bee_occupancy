@@ -10,6 +10,7 @@ create_sites <- function(resolution, countries){
  
   # define initial and target map projections
   prj<-"+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
+  prj2<-"+proj=longlat"
   prj3<-"+proj=aea +lat_1=20 +lat_2=60   +lat_0=40 +lon_0=-96  +x_0=0  +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
   
   ## load political borders for countries
@@ -77,10 +78,16 @@ create_sites <- function(resolution, countries){
   
   intersectGridClipped@data <- data.frame(site=paste('s', 1:length(intersectGridClipped), sep=''))
   
+  area_km2 <- data.frame(site = paste('s', 1:length(intersectGridClipped), sep=''), area = sapply(intersectGridClipped@polygons, FUN = function(x) x@area)/1e+6)
+  
+  ## reproject again
+  
+  sites_clean <- spTransform(intersectGridClipped, CRS(prj2))
+  
   ## save sites
   
-  saveRDS(intersectGridClipped, paste0("clean_data/sites_",countries, "_", resolution,".rds"))
-  
+  saveRDS(sites_clean, paste0("clean_data/sites/sites_",countries, "_", resolution,".rds"))
+  saveRDS(area_km2, paste0("clean_data/sites/area_",countries, "_", resolution,".rds"))
 }
 
 ## create sites for the US and US + Canada + Mexico separately
