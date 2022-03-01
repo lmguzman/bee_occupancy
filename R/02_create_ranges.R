@@ -21,15 +21,60 @@ bee_ready <- function(resolution, countries){
 
   ## get unique locations and years
   
-  all_small <- distinct(all_obs[,.(finalName,family, finalLatitude, finalLongitude, year)][!is.na(year)])
+  all_small <- distinct(all_obs[,.(finalName,family, genus, eventDate, finalLatitude, finalLongitude, year, month)][!is.na(year)])
   
+  ## clean month
+  
+  # Extrac date from event date
+  all_small$date <- ymd_hms(all_small$eventDate) 
+
+  # extrat date from month
+  all_small[, date2 := fifelse(str_detect(month, "\\d{4}\\-\\d{2}\\-\\d{2} to"), ymd(str_extract(month, "\\d{4}\\-\\d{2}\\-\\d{2}")), ymd(date))]
+  
+  # extract date from event date by first replacing / by -
+  all_small[, date3 := fifelse(is.na(date) & is.na(date2) & eventDate != "", mdy(str_replace(eventDate, "/", "-")), mdy(NA))]
+
+  # extract date from the month column that is written as a date
+  all_small[, date4 := fifelse(is.na(date) & is.na(date2) & is.na(date3) & str_detect(month, "\\d{4}\\-\\d{2}\\-\\d{2}") , ymd(month), ymd(NA))]
+  
+  # from all of the dates 1-4 above
+  all_small$month_clean <- case_when(!is.na(all_small$date) ~ month(all_small$date), 
+                                     !is.na(all_small$date2) ~ month(all_small$date2), 
+                                     !is.na(all_small$date3) ~ month(all_small$date3), 
+                                     !is.na(all_small$date4) ~ month(all_small$date4), 
+                                     # for the remainder, do as numeric of month but skip the months that are 0
+                                     is.na(all_small$date) & is.na(all_small$date2) & 
+                                       is.na(all_small$date3) & is.na(all_small$date4) & all_small$month != "0" ~ as.numeric(all_small$month))
+  
+  # remove all observations where month is 0 and we couldn't extract month from another way
+  all_small <- all_small[!(is.na(all_small$date) & is.na(all_small$date2) & 
+              is.na(all_small$date3) & is.na(all_small$date4) & all_small$month == "0")]
+  
+  # clean the months that are abbreviated
+  month_to_clean <- all_small[is.na(month_clean)]$month
+  
+  month_text <- str_extract_all(month_to_clean, "[a-zA-Z]*")
+  
+  month_text_list <- lapply(month_text, FUN = function(x) x[x!=""])
+  
+  month_text_clean <-unlist(lapply(month_text_list, FUN = function(x) ifelse(length(x) == 0, NA, x)))
+  
+  all_small[is.na(month_clean)]$month_clean <- sapply(month_text_clean, FUN = function(x) ifelse(length(str_which(x, month.abb)) == 0,
+                                                                                           NA, str_which(x, month.abb)))
+  
+  # remove months -1, -2, 18 and 20
+  
+  all_small_clean <- all_small[!is.na(month_clean) & month != -1 & month != -2 & month != 18 & month != 20, 
+                               .(finalName, family, genus, finalLatitude, finalLongitude, year, month_clean)]  
+  
+
   ## remove species with less than 5 unique lat long x years
   
-  n_obs_sp <- table(all_small$finalName)
+  n_obs_sp <- table(all_small_clean$finalName)
   
   species_to_remove <- names(n_obs_sp[n_obs_sp<5])
   
-  all_small2 <- all_small[!(finalName %in% species_to_remove)]
+  all_small2 <- all_small_clean[!(finalName %in% species_to_remove)]
   
   ## load site data 
   sites <- readRDS(paste0("clean_data/sites/sites_",countries,"_",resolution, ".rds"))

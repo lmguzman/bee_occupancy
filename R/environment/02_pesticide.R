@@ -146,7 +146,7 @@ pest_sites <- function(resolution){
   
   # perform the join, eliminating not matched rows from Right
   
-  names_df <- c("year", "site", "compund", "epest_high", "epest_low")
+  names_df <- c("year", "site", "compound", "epest_high", "epest_low")
   
   ## organophosphates
   
