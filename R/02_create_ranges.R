@@ -2,6 +2,8 @@ library(dplyr)
 library(data.table)
 library(sp)
 library(rgeos)
+library(lubridate)
+library(stringr)
 
 ## further subset data to plausible species
 
@@ -72,7 +74,7 @@ bee_ready <- function(resolution, countries){
   
   n_obs_sp <- table(all_small_clean$finalName)
   
-  species_to_remove <- names(n_obs_sp[n_obs_sp<5])
+  species_to_remove <- names(n_obs_sp[n_obs_sp<10])
   
   all_small2 <- all_small_clean[!(finalName %in% species_to_remove)]
   
@@ -101,7 +103,7 @@ bee_ready <- function(resolution, countries){
   
   nsites <- sapply(bees_split, function(x) length(unique(x[,site])))
   
-  bee_data <- all_bees[!(finalName %in% c(names(nyears[nyears < 2]), names(nsites[nsites < 2])))]
+  bee_data <- all_bees[!(finalName %in% c(names(nyears[nyears < 3]), names(nsites[nsites < 10])))]
   
   saveRDS(bee_data, file = paste0("clean_data/observations/observations_",countries,"_",resolution, ".rds"))
 }
@@ -110,11 +112,11 @@ bee_ready <- function(resolution, countries){
 
 bee_ready(100, 'US')
 
-bee_ready(50, 'US')
+#bee_ready(50, 'US')
 
-bee_ready(100, 'all')
+#bee_ready(100, 'all')
 
-bee_ready(50, 'all')
+#bee_ready(50, 'all')
 
 
 
@@ -174,11 +176,11 @@ make_ranges_all <- function(resolution, countries){
 
 make_ranges_all(100, 'US')
 
-make_ranges_all(50, 'US')
-
-make_ranges_all(100, 'all')
-
-make_ranges_all(50, 'all')
+# make_ranges_all(50, 'US')
+# 
+# make_ranges_all(100, 'all')
+# 
+# make_ranges_all(50, 'all')
 
 
 

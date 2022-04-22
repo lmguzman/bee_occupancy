@@ -47,6 +47,7 @@ model.jags <- function() {
   
   mu.psi.yr ~ dnorm(0,0.01)
   
+  psi.area ~ dnorm(0,0.01)
   
   for(sp in 1:nsp){
     psi.era[sp] ~ dnorm(mu.psi.yr,tau.psi.era)
@@ -67,8 +68,8 @@ model.jags <- function() {
         ## detection
         logit(p[site,yr,sp]) <-
           mu.p.0 +
-          p.yr*(yr) +
-          exp.sp[sp] +
+          #p.yr*(yr) +
+          #p.sp[sp] +
           p.site[site,yr]
         
       }
@@ -99,8 +100,7 @@ model.jags <- function() {
   
 }
 get.params <- function()
-  c('p.yr',
-    'mu.p.0',
+  c('mu.p.0',
     'mu.psi.0',
     'mu.psi.yr',
     'psi.era',

@@ -4,7 +4,7 @@ library(purrr)
 
 ## function to prepare occurrence data 
 
-prepare_occurrence <- function(contries, resolution, year_range, family){
+prepare_occurrence <- function(countries, resolution, year_range, family_filter, oc_interval){
 
   ## load data
   observations_raw <- readRDS(paste0("clean_data/observations/observations_", countries, "_", resolution, ".rds"))
@@ -16,7 +16,7 @@ prepare_occurrence <- function(contries, resolution, year_range, family){
   
   ## subset observations to sites in envrivonmental data and year range
   
-  observations <- observations_raw[family %in% family & site %in% environmental_data$site_id & year >=  year_range[1] & year <=  year_range[2]]
+  observations <- observations_raw[family %in% family_filter & site %in% environmental_data$site_id & year >=  year_range[1] & year <=  year_range[2]]
   
   site_ID <- sort(unique(observations$site))
   
@@ -36,18 +36,33 @@ prepare_occurrence <- function(contries, resolution, year_range, family){
   
   #### get unique data ##
   
-  observations_clean_sp <- distinct(observations_clean[,.(finalName, site, year, genus, month_clean)])
-  observations_clean_sp$year <- paste0("yr", observations_clean_sp$year)
-  observations_clean_sp$visit <- paste0("v", observations_clean_sp$month_clean)
+  colnames(observations_clean)[7] <- 'month'
+  
+  year_visit_df <- data.frame(oc_int = paste0("yr",rep(seq(year_range[1], (year_range[2]), oc_interval), each = 2)), 
+             year = year_range[1]:year_range[2]) %>%
+    left_join(expand.grid(year = year_range[1]:year_range[2], month = 1:12) %>% 
+    arrange(year, month) %>%  
+    mutate(visit = case_when(month <=6 & year %% 2 != 0 ~ 1,
+                             month >6 & year %% 2 != 0 ~ 2,
+                             month <=6 & year %% 2 == 0 ~ 3,
+                             month >6 & year %% 2 == 0 ~ 4)) %>% 
+    mutate(visit = paste0("v", visit))) %>% data.table()
+  
+  setkeyv(observations_clean, c('year', 'month'))
+  setkeyv(year_visit_df, c('year', 'month'))
+  
+  observations_clean_vis <- year_visit_df[observations_clean]
+  
+  observations_clean_sp <- distinct(observations_clean_vis[,.(finalName, site, oc_int, genus, visit)])
   
   species_presence <- sort(unique(observations_clean_sp$finalName))
   
   observations_clean_sp$bombus <- ifelse(observations_clean_sp$genus == 'Bombus', "Bombus", "Not Bombus")
   
-  site_ID <- sort(unique(observations_clean_sp$site))
-  yr_ID <- paste0("yr", seq(year_range[1],year_range[2], 1))
+  site_ID <- sort(unique(observations_clean_sp$site)) 
+  yr_ID <- sort(unique(observations_clean_sp$oc_int))
   nsite  <- length(unique(observations_clean_sp$site))
-  nyr <- length(unique(observations_clean_sp$year))
+  nyr <- length(unique(observations_clean_sp$oc_int))
   nsp <- length(unique(observations_clean_sp$finalName))
   nvisit <- length(unique(observations_clean_sp$visit))
   
@@ -56,11 +71,11 @@ prepare_occurrence <- function(contries, resolution, year_range, family){
   occ.arr <- array(0, dim = c(nsite, nyr, nvisit, nsp), 
                    dimnames = list(site=site_ID,
                                    #year= paste0("yr", seq(1900,2010, 10)),
-                                   year= sort(unique(observations_clean_sp$year)),
-                                   visit=paste0("v", 1:12),
+                                   year= sort(unique(observations_clean_sp$oc_int)),
+                                   visit=paste0("v", 1:4),
                                    sp=species_presence))
   
-  occ.arr[cbind(match(observations_clean_sp$site, site_ID), match(observations_clean_sp$year, paste0("yr", seq(year_range[1],year_range[2], 1))), match(observations_clean_sp$visit, paste0("v", 1:12)), match(observations_clean_sp$finalName, species_presence))] <- 1 
+  occ.arr[cbind(match(observations_clean_sp$site, site_ID), match(observations_clean_sp$oc_int, paste0("yr", seq(year_range[1],year_range[2], 2))), match(observations_clean_sp$visit, paste0("v", 1:4)), match(observations_clean_sp$finalName, species_presence))] <- 1 
   
   
   ## subset to species that are present
@@ -151,20 +166,20 @@ prepare_occurrence <- function(contries, resolution, year_range, family){
                        visit=paste0("v", 1:12),
                        sp=species_presence)
   
-  saveRDS(all_data_era, paste0("clean_data/data_prepared/my_data_era_",countries, "_", resolution, "_", paste0(year_range, collapse = "_"), "_", family, ".rds" ))
+  saveRDS(all_data_era, paste0("clean_data/data_prepared/my_data_era_",countries, "_", resolution, "_", paste0(year_range, collapse = "_"), "_", family_filter, ".rds" ))
 
-  saveRDS(all_data_env, paste0("clean_data/data_prepared/my_data_env_",countries, "_", resolution, "_", paste0(year_range, collapse = "_"), "_", family,".rds" ))
+  saveRDS(all_data_env, paste0("clean_data/data_prepared/my_data_env_",countries, "_", resolution, "_", paste0(year_range, collapse = "_"), "_", family_filter,".rds" ))
   
 }
 
 ## prepare occurrence for US 100
 
-prepare_occurrence("US", 100, c(1996, 2016), "Apidae")
+prepare_occurrence("US", 100, c(1997, 2016), "Apidae", 2)
 
 
 ## prepare occurrence for US 50
 
-prepare_occurrence("US", 50, c(1996, 2016))
+prepare_occurrence("US", 50, c(1997, 2016),  "Apidae", 2)
 
 
 

@@ -47,6 +47,7 @@ model.jags <- function() {
   
   mu.psi.yr ~ dnorm(0,0.01)
   
+  psi.area ~ dnorm(0,0.01)
   
   for(sp in 1:nsp){
     psi.era[sp] ~ dnorm(mu.psi.yr,tau.psi.era)
@@ -60,6 +61,7 @@ model.jags <- function() {
         ## occupancy
         logit(psi[site,yr,sp]) <-
           mu.psi.0 +
+          psi.area*area[site] +
           psi.sp[sp] +
           psi.era[sp]*yr 
         
@@ -68,7 +70,7 @@ model.jags <- function() {
         logit(p[site,yr,sp]) <-
           mu.p.0 +
           p.yr*(yr) +
-          exp.sp[sp] +
+          p.sp[sp] +
           p.site[site,yr]
         
       }
@@ -104,7 +106,8 @@ get.params <- function()
     'mu.psi.0',
     'mu.psi.yr',
     'psi.era',
-    'psi.sp')
+    'psi.sp',
+    'psi.area')
 
 
 

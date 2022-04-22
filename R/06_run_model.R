@@ -2,15 +2,15 @@ library(stringr)
 
 source("R/src/initialize.R")
 
-run_model <- function(countries, resolution, year_range, model){
+run_model <- function(countries, resolution, year_range, model, family){
   
   ## load data
   if(str_detect(model, 'era')){
     
-    all_data <- readRDS(paste0("clean_data/data_prepared/my_data_era_",countries, "_", resolution, "_", paste0(year_range, collapse = "_"), ".rds" ))
+    all_data <- readRDS(paste0("clean_data/data_prepared/my_data_era_",countries, "_", resolution, "_", paste0(year_range, collapse = "_"), "_", family,".rds" ))
     
   }else{
-    all_data <- readRDS(paste0("clean_data/data_prepared/my_data_env_",countries, "_", resolution, "_", paste0(year_range, collapse = "_"), ".rds" ))
+    all_data <- readRDS(paste0("clean_data/data_prepared/my_data_env_",countries, "_", resolution, "_", paste0(year_range, collapse = "_"), "_", family,".rds" ))
   }
   
   ## assign data to main vars
@@ -64,7 +64,7 @@ run_model <- function(countries, resolution, year_range, model){
    
 }
 
-run_model('US', 100, c(1996, 2016), 'ms_era_1')
+run_model('US', 100, c(1996, 2016), 'ms_era_1', "Apidae")
 
 
 

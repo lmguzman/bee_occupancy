@@ -162,7 +162,9 @@ prepare_pesticide <- function(resolution, year_range, pesticide, epest){
   
   pest_all <- Reduce('+', pesticide_list)
   
-  return(pest_all)
+  pest_all_scaled <- (pest_all- mean(pest_all))/sd(pest_all)
+  
+  return(pest_all_scaled)
 }
 
 
