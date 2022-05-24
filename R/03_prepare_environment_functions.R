@@ -15,15 +15,15 @@ prepare_environmental_data <- function(countries, resolution, scaling,year_range
   
   ## prepare neonics
    
-  neonic_mat <- prepare_pesticide(resolution, year_range, "neonics", 'epest_high')
+  neonic_mat <- prepare_pesticide(resolution, year_range, "neonics")
   
   ## prepare organophosphates
   
-  gen_toxic_mat <- prepare_pesticide(resolution, year_range, "gen_toxic", 'epest_high')
+  gen_toxic_mat <- prepare_pesticide(resolution, year_range, "gen_toxic")
   
   ## prepare pyrethroid
   
-  pyr_mat <- prepare_pesticide(resolution, year_range, "pyrethroid", 'epest_high')
+  pyr_mat <- prepare_pesticide(resolution, year_range, "pyrethroid")
   
   ## prepare agriculture
   
@@ -75,6 +75,7 @@ prepare_tmax <- function(countries, resolution, scaling, year_range, ...){
   ## prepare temperature ### 
   
   climate_temp <- climate %>%
+    mutate(site = paste0("s", str_pad(str_remove(site,"s"), width = 3, pad = "0", side = 'left'))) %>% 
     filter(variable == 'tmax' & month %in% c(7,8)) %>% 
     group_by(site, year) %>% 
     summarise(max_t_year = max(values, na.rm = TRUE)/10) %>% 
@@ -105,6 +106,7 @@ prepare_prec <- function(countries, resolution, scaling, year_range, ...){
   ## prepare temperature ### 
   
   climate_prec <- climate %>% 
+    mutate(site = paste0("s", str_pad(str_remove(site,"s"), width = 3, pad = "0", side = 'left'))) %>% 
     filter(variable == 'prec') %>% 
     group_by(site, year) %>% 
     summarise(mean_prec_year = mean(values, na.rm = TRUE)) %>% 
@@ -124,45 +126,55 @@ prepare_prec <- function(countries, resolution, scaling, year_range, ...){
 
 ##### pesticides #####
 
-prepare_pesticide <- function(resolution, year_range, pesticide, epest){
+prepare_pesticide <- function(resolution, year_range, pesticide){
   
-  pesticide_raw <- readRDS(paste0("clean_data/pesticide/", pesticide,"_US_", resolution, ".rds"))
+  pesticide_raw <- readRDS(paste0("clean_data/pesticide/", pesticide,"_US_", resolution, ".rds")) %>% 
+    as.data.table()
   
-  if(year_range[1] < min(pesticide_raw$year)){return("year range outside of data bounds")}
-  if(year_range[2] > max(pesticide_raw$year)){return("year range outside of data bounds")}
-  
+  # if(year_range[1] < min(pesticide_raw$YEAR)){return("year range outside of data bounds")}
+  # if(year_range[2] > max(pesticide_raw$YEAR)){return("year range outside of data bounds")}
+  # 
   all_us_sites <- readRDS(paste0("clean_data/sites/sites_US_", resolution, ".rds"))
   
-  pesticide_raw <- pesticide_raw %>% filter(year >= year_range[1] & year <= year_range[2])
+  pesticide_raw <- pesticide_raw %>% filter(YEAR >= year_range[1] & YEAR <= year_range[2])
   
   ## fill in gaps for sites where no pesticide use detected 
   
-  year_site <- expand.grid(year = year_range[1]:year_range[2], site = all_us_sites$site,
-                                  compound = unique(pesticide_raw$compound), epest = epest) %>% 
+  year_site <- expand.grid(YEAR = year_range[1]:year_range[2], site = all_us_sites$site,
+                                  COMPOUND = unique(pesticide_raw$COMPOUND)) %>% 
     data.table()
   
-  setkeyv(year_site, c("year", "site", "compound"))
-  setkeyv(pesticide_raw,  c("year", "site", "compound"))
+  setkeyv(year_site, c("YEAR", "site", "COMPOUND"))
+  setkeyv(pesticide_raw,  c("YEAR", "site", "COMPOUND"))
   
   pesticide_all_sites <- pesticide_raw[year_site] %>% 
-    mutate(epest_high = ifelse(is.na(epest_high), 0, epest_high),
-           epest_low = ifelse(is.na(epest_low), 0, epest_low)) 
+    mutate(pest_site_ld50 = ifelse(is.na(pest_site_ld50), 0, pest_site_ld50)) %>% 
+    mutate(site = paste0("s", str_pad(str_remove(site,"s"), width = 3, pad = "0", side = 'left'))) %>% 
+    mutate(year = paste0('yr', YEAR))
   
   ### create a matrix 
   
-  pesticide_list <- 
-    split(pesticide_all_sites, pesticide_all_sites$compound) %>% 
-    purrr::map(~mutate(.x, year = paste0("yr", year))) %>% 
-    purrr::map(~mutate(.x, logV1 = ifelse(epest == 'epest_high', log(epest_high+1), log(epest_low+1)))) %>%
-    #purrr::map(~mutate(.x, scaled_v1 = scaling(logV1))) %>% 
-    purrr::map(~dplyr::select(.x, site, year, logV1)) %>%
-    purrr::map(~tidyr::pivot_wider(.x, names_from= 'year', values_from = 'logV1')) %>%
-    purrr::map(~tibble::column_to_rownames(.x,"site")) %>% 
-    purrr::map(~as.matrix(.x)) 
-  
-  pest_all <- Reduce('+', pesticide_list)
+  pest_all <- pesticide_all_sites[,.(summed_pesticides = sum(pest_site_ld50)), by = .(site, year)] %>% 
+    mutate(loged_summed_pest = log(summed_pesticides + 1)) %>% 
+    dplyr::select(-summed_pesticides) %>% 
+    pivot_wider(names_from= 'year', values_from = 'loged_summed_pest') %>% 
+    tibble::column_to_rownames("site") %>% 
+    as.matrix() 
   
   pest_all_scaled <- (pest_all- mean(pest_all))/sd(pest_all)
+  
+  # 
+  # pesticide_list <- 
+  #   split(pesticide_all_sites, pesticide_all_sites$compound) %>% 
+  #   purrr::map(~mutate(.x, year = paste0("yr", year))) %>% 
+  #   purrr::map(~mutate(.x, logV1 = ifelse(epest == 'epest_high', log(epest_high+1), log(epest_low+1)))) %>%
+  #   #purrr::map(~mutate(.x, scaled_v1 = scaling(logV1))) %>% 
+  #   purrr::map(~dplyr::select(.x, site, year, logV1)) %>%
+  #   purrr::map(~tidyr::pivot_wider(.x, names_from= 'year', values_from = 'logV1')) %>%
+  #   purrr::map(~tibble::column_to_rownames(.x,"site")) %>% 
+  #   purrr::map(~as.matrix(.x)) 
+  
+  #pest_all <- Reduce('+', pesticide_list)
   
   return(pest_all_scaled)
 }
@@ -190,6 +202,7 @@ prepare_agriculture <- function(countries, resolution, scaling, ...){
       left_join(ag_year) %>% 
       dplyr::select(new_year, site, scaled_crop_units) %>% 
       full_join(year_site) %>% 
+      mutate(site = paste0("s", str_pad(str_remove(site,"s"), width = 3, pad = "0", side = 'left'))) %>% 
       tidyr::pivot_wider(names_from= 'new_year', values_from = 'scaled_crop_units', values_fill = 0) %>% 
       tibble::column_to_rownames("site") %>% 
       as.matrix()
@@ -216,6 +229,7 @@ prepare_drought <- function(countries, resolution, year_range, ...){
       filter(year >= year_range[1] & year <= year_range[2])
     
     drought_mat <- drought %>% 
+      mutate(site = paste0("s", str_pad(str_remove(site,"s"), width = 3, pad = "0", side = 'left'))) %>% 
       mutate(year = paste0("yr", year)) %>%
       filter(!is.infinite(mean_drought), !is.na(mean_drought)) %>% 
       dplyr::select(site, year, mean_drought) %>% 
@@ -242,6 +256,7 @@ prepare_floral <- function(countries, resolution, scaling, year_range, ...){
       left_join(fl_year) %>% 
       filter(!is.na(new_year)) %>% 
       dplyr::select(site, new_year, floral_all) %>% 
+      mutate(site = paste0("s", str_pad(str_remove(site,"s"), width = 3, pad = "0", side = 'left'))) %>%
       tidyr::pivot_wider(names_from= 'new_year', values_from = 'floral_all') %>% 
       tibble::column_to_rownames("site") %>%
       as.matrix() 
@@ -264,6 +279,7 @@ prepare_nesting <- function(countries, resolution, scaling, year_range, ...){
     left_join(ns_year) %>% 
     filter(!is.na(new_year)) %>% 
     dplyr::select(site, new_year, nesting_all) %>% 
+    mutate(site = paste0("s", str_pad(str_remove(site,"s"), width = 3, pad = "0", side = 'left'))) %>% 
     tidyr::pivot_wider(names_from= 'new_year', values_from = 'nesting_all') %>% 
     tibble::column_to_rownames("site") %>%
     as.matrix() 

@@ -155,8 +155,3 @@ agri_sites(100)
 
 agri_sites(50)
 
-
-
-
-
-

@@ -36,7 +36,7 @@ range size --
 
 - Species specific slopes may not be good, family specific slopes, or genus specific slopes for environmental predictors
 
-- scale all of the variables
+- scale all of the variables (done)
 
 - run for longer to help with convergence 
 
@@ -57,5 +57,29 @@ range size --
 
 
 
+-------
+shuffle occupancy site labels -- all of the predictors have the same structure but the occupancy 
+- none of them should be significant
+
+Check the pesticide in nevada, west
+why it looks like there is no relationship between pesticide aplication and agriculture
+
+check the agriculture at the county level
 
 
+
+-------
+
+Use interception to figure out how much pesticide per county per site
+
+### area of itercection of each county with that site --
+### calculate the pesticide -- area of intercetion of the county divided by area of county multiplied by pesticide
+
+
+Weight each pesticide by dividing by the LD50
+
+For each site sum the amount of pesticide 
+
+then we add the different types of pesticides
+
+then log 

@@ -110,6 +110,27 @@ state_county_fp <- us_counties[,c("STATEFP", "COUNTYFP")]
 
 spdf <- as_Spatial(state_county_fp)
 
+## Get LD50 data
+
+### harvest LD50s
+
+library(rvest)
+
+LD_50_mn<- read_html("https://www.mda.state.mn.us/protecting/bmps/pollinators/beetoxicity") %>% 
+  html_table(fill = TRUE)
+
+LD_50_mn <- LD_50_mn[[1]]
+
+# fix colnames
+colnames(LD_50_mn) <- str_replace(str_remove_all(str_replace_all(colnames(LD_50_mn), " ", "_"), "\\(|\\)"), "\\/", "_")
+
+#remove commas and stars, make numeric
+LD_50_clean <- LD_50_mn %>% 
+  mutate(Honey_Bee_Contact_LD_50_ug_bee = as.numeric(str_remove_all(str_replace_all(Honey_Bee_Contact_LD_50_ug_bee, ",", ""), "\\*")),
+         Honey_Bee_Contact_LD_50_ppb = as.numeric(str_remove_all(str_replace_all(Honey_Bee_Contact_LD_50_ppb, ",", ""), "\\*")),
+         Honey_Bee_Oral_LD_50_ug_bee = as.numeric(str_remove_all(str_replace_all(Honey_Bee_Oral_LD_50_ug_bee, ",", ""), "\\*")),
+         Honey_Bee_Oral_LD_50_ppb = as.numeric(str_remove_all(str_replace_all(Honey_Bee_Oral_LD_50_ppb, ",", ""), "\\*")))
+
 
 ## load pesticide data
 neonics_all <- readRDS("clean_data/pesticide/neonics_county.rds")
@@ -118,6 +139,125 @@ pyrethroid_all <- readRDS("clean_data/pesticide/pyrethroid_county.rds")
 
 
 pest_sites <- function(resolution){
+  
+  ## load sites
+  
+  sites <- readRDS(paste0("clean_data/sites/sites_US_",resolution, ".rds"))
+  
+  ## reproject sites to county crs
+  
+  prj3<-"+proj=longlat +datum=NAD83 +no_defs"
+  
+  sites_t <- spTransform(sites, CRS(prj3))
+  
+  ## find the counties per site
+  
+  county_site_interception <- st_intersection(st_as_sf(spdf), st_as_sf(sites_t))
+  
+  ## calculate area for each county
+  
+  area_polygon <- st_area(county_site_interception)
+  
+  # area of county that intersects site
+  county_site_area <- data.frame(STATEFP = county_site_interception$STATEFP, COUNTYFP = county_site_interception$COUNTYFP, site = county_site_interception$site, area_poly = as.numeric(area_polygon))
+  
+  ## total area of county
+  area_county <- st_area(state_county_fp)
+  
+  county_area <- data.frame(STATEFP = state_county_fp$STATEFP, COUNTYFP = state_county_fp$COUNTYFP, area_county = as.numeric(area_county))
+  
+  
+  ## neonics
+  
+  neonic_all_arranged <- neonics_all %>% 
+    mutate(STATEFP = str_pad(STATE_FIPS_CODE, 2, "left", 0), 
+           COUNTYFP = str_pad(COUNTY_FIPS_CODE, 2, "left", 0)) %>% 
+    dplyr::select(YEAR, STATEFP, COUNTYFP, EPEST_HIGH_KG, COMPOUND) 
+  
+  neonic_ld50 <- county_site_area %>% 
+    left_join(county_area) %>% 
+    arrange(STATEFP, COUNTYFP) %>% 
+    left_join(neonic_all_arranged) %>% 
+    mutate(EPEST_HIGH_KG = ifelse(is.na(EPEST_HIGH_KG), 0, EPEST_HIGH_KG)) %>% 
+    mutate(pest_area = (EPEST_HIGH_KG*area_poly)/area_county) %>% 
+    group_by(site, COMPOUND, YEAR) %>% 
+    summarise(pest_site = sum(pest_area)) %>% 
+    left_join(dplyr::select(LD_50_clean, Active_Ingredient, Honey_Bee_Contact_LD_50_ug_bee), by = c("COMPOUND" = "Active_Ingredient")) %>% 
+    mutate(pest_site_ld50 = pest_site/Honey_Bee_Contact_LD_50_ug_bee)
+  
+  saveRDS(neonic_ld50, file = paste0("clean_data/pesticide/neonics_US_",resolution, ".rds"))
+  
+  ## Organophosphate 
+  
+  gen_all_arranged <- gen_toxic_all %>% 
+    mutate(STATEFP = str_pad(STATE_FIPS_CODE, 2, "left", 0), 
+           COUNTYFP = str_pad(COUNTY_FIPS_CODE, 2, "left", 0)) %>% 
+    dplyr::select(YEAR, STATEFP, COUNTYFP, EPEST_HIGH_KG, COMPOUND) 
+  
+  gen_ld50 <- county_site_area %>% 
+    left_join(county_area) %>% 
+    arrange(STATEFP, COUNTYFP) %>% 
+    left_join(gen_all_arranged) %>% 
+    mutate(EPEST_HIGH_KG = ifelse(is.na(EPEST_HIGH_KG), 0, EPEST_HIGH_KG)) %>% 
+    mutate(pest_area = (EPEST_HIGH_KG*area_poly)/area_county) %>% 
+    group_by(site, COMPOUND, YEAR) %>% 
+    summarise(pest_site = sum(pest_area)) %>% 
+    left_join(dplyr::select(LD_50_clean, Active_Ingredient, Honey_Bee_Contact_LD_50_ug_bee), by = c("COMPOUND" = "Active_Ingredient")) %>% 
+    mutate(pest_site_ld50 = pest_site/Honey_Bee_Contact_LD_50_ug_bee)
+  
+  
+  saveRDS(gen_ld50, file = paste0("clean_data/pesticide/gen_toxic_US_",resolution, ".rds"))
+  
+  
+  ### pyrethroid
+  
+  pyr_all_arranged <- pyrethroid_all %>% 
+    mutate(STATEFP = str_pad(STATE_FIPS_CODE, 2, "left", 0), 
+           COUNTYFP = str_pad(COUNTY_FIPS_CODE, 2, "left", 0)) %>% 
+    dplyr::select(YEAR, STATEFP, COUNTYFP, EPEST_HIGH_KG, COMPOUND) %>% 
+    mutate(COMPOUND = case_when(COMPOUND == "ALPHA CYPERMETHRIN" ~ "ALPHA-CYPERMETHRIN", 
+                                COMPOUND == "CYHALOTHRIN-GAMMA" ~ "GAMMA-CYHALOTHRIN",
+                                COMPOUND == "CYHALOTHRIN-LAMBDA" ~ "LAMBDA-CYHALOTHRIN",
+                                TRUE ~ as.character(COMPOUND)))
+  
+  pyr_ld50 <- county_site_area %>% 
+    left_join(county_area) %>% 
+    arrange(STATEFP, COUNTYFP) %>% 
+    left_join(pyr_all_arranged) %>% 
+    mutate(EPEST_HIGH_KG = ifelse(is.na(EPEST_HIGH_KG), 0, EPEST_HIGH_KG)) %>% 
+    mutate(pest_area = (EPEST_HIGH_KG*area_poly)/area_county) %>% 
+    group_by(site, COMPOUND, YEAR) %>% 
+    summarise(pest_site = sum(pest_area)) %>% 
+    left_join(dplyr::select(LD_50_clean, Active_Ingredient, Honey_Bee_Contact_LD_50_ug_bee), by = c("COMPOUND" = "Active_Ingredient")) %>% 
+    mutate(pest_site_ld50 = pest_site/Honey_Bee_Contact_LD_50_ug_bee)
+  
+  
+  saveRDS(pyr_ld50, file = paste0("clean_data/pesticide/pyrethroid_US_",resolution, ".rds"))
+
+}
+
+
+### pesticide only for the US no option for country
+
+## assign sites for 100km resolution
+
+pest_sites(100)
+
+## assign sites for 50km resolution
+
+pest_sites(50)
+
+
+
+
+
+
+
+
+
+
+## old function
+pest_sites_old <- function(resolution){
   
   ## load sites
   
@@ -151,9 +291,9 @@ pest_sites <- function(resolution){
   ## organophosphates
   
   gen_toxic_site <- gen_toxic_all[site_county][!is.na(COMPOUND) & !is.na(site)]
-
+  
   gen_toxic_site_year <- gen_toxic_site[, .(mean(EPEST_HIGH_KG, na.rm = TRUE), mean(EPEST_LOW_KG, na.rm = TRUE)), by = .(YEAR, site, COMPOUND)]
-
+  
   colnames(gen_toxic_site_year) <- names_df
   
   saveRDS(gen_toxic_site_year, file = paste0("clean_data/pesticide/gen_toxic_US_",resolution, ".rds"))
@@ -162,36 +302,23 @@ pest_sites <- function(resolution){
   ### pyrethroid
   
   pyrethroid_site <- pyrethroid_all[site_county][!is.na(COMPOUND) & !is.na(site)]
-
+  
   pyrethroid_site_year <- pyrethroid_site[, .(mean(EPEST_HIGH_KG, na.rm = TRUE), mean(EPEST_LOW_KG, na.rm = TRUE)), by = .(YEAR, site, COMPOUND)]
-
+  
   colnames(pyrethroid_site_year) <- names_df
   
   saveRDS(pyrethroid_site_year, file = paste0("clean_data/pesticide/pyrethroid_US_",resolution, ".rds"))
-
+  
   ## neonics
   
   neonics_site <- neonics_all[site_county][!is.na(COMPOUND) & !is.na(site)]
-
+  
   neonics_site_year <- neonics_site[, .(mean(EPEST_HIGH_KG, na.rm = TRUE), mean(EPEST_LOW_KG, na.rm = TRUE)), by = .(YEAR, site, COMPOUND)]
-
+  
   colnames(neonics_site_year) <- names_df
   
   saveRDS(neonics_site_year, file = paste0("clean_data/pesticide/neonics_US_",resolution, ".rds"))
   
 }
-
-
-### pesticide only for the US no option for country
-
-## assign sites for 100km resolution
-
-pest_sites(100)
-
-## assign sites for 50km resolution
-
-pest_sites(50)
-
-
 
 

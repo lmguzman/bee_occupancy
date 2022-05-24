@@ -1,6 +1,7 @@
 library(dplyr)
 library(data.table)
 library(purrr)
+library(stringr)
 
 ## function to prepare occurrence data 
 
@@ -8,8 +9,6 @@ prepare_occurrence <- function(countries, resolution, year_range, family_filter,
   
   ## load data
   observations_raw <- readRDS(paste0("clean_data/observations/observations_", countries, "_", resolution, ".rds"))
-  
-  observations_raw$site <- paste0("s", str_pad(str_remove(observations_raw$site, "s"), width = 3, pad = "0", side = 'left'))
   
   environmental_data <- readRDS(paste0("clean_data/data_prepared/environment_", countries, "_", resolution, "_", paste0(year_range, collapse = "_"),".rds"))
   
@@ -40,6 +39,8 @@ prepare_occurrence <- function(countries, resolution, year_range, family_filter,
   
   observations_clean <- inner_join(observations, sp_range_df)
   
+  observations_clean$site <- paste0("s", str_pad(str_remove(observations_clean$site, "s"), width = 3, pad = "0", side = 'left'))
+  
   #### get unique data ##
   
   colnames(observations_clean)[7] <- 'month'
@@ -62,7 +63,7 @@ prepare_occurrence <- function(countries, resolution, year_range, family_filter,
   observations_clean_vis$genus <- str_extract(observations_clean_vis$finalName, "[A-Z][a-z]*")
   
   observations_clean_sp <- distinct(observations_clean_vis[,.(finalName, site, oc_int, genus, visit)])
-
+  
   species_presence <- sort(unique(observations_clean_sp$finalName))
   site_ID <- sort(unique(observations_clean_sp$site)) 
   yr_ID <- sort(unique(observations_clean_sp$oc_int))
@@ -82,6 +83,12 @@ prepare_occurrence <- function(countries, resolution, year_range, family_filter,
                                    sp=species_presence))
   
   occ.arr[cbind(match(observations_clean_sp$site, site_ID), match(observations_clean_sp$oc_int, yr_ID), match(observations_clean_sp$visit, visit_ID), match(observations_clean_sp$finalName, species_presence))] <- 1 
+  
+  new_rownames <- sample(rownames(occ.arr), replace = FALSE)
+  
+  rownames(occ.arr) <- new_rownames
+  
+  occ.arr <- occ.arr[order(dimnames(occ.arr)$site),,,]
   
   ## subset to species that are present
   sp.keep <- apply(occ.arr, 'sp', sum)>0
@@ -104,7 +111,7 @@ prepare_occurrence <- function(countries, resolution, year_range, family_filter,
   dimnames(occ.arr) <- occ_dim_names
   
   sp_gen_directory <- unique(observations_clean_sp[, .(finalName, genus)]) 
- 
+  
   get.indices <- function(sp) {
     vis.arr <- nsp.arr.gen[[sp_gen_directory[sp_gen_directory$finalName==sp,]$genus]]
     outside.range <- setdiff(dimnames(occ.arr)$site, sites_by_sp[[sp]])
@@ -118,7 +125,7 @@ prepare_occurrence <- function(countries, resolution, year_range, family_filter,
     do.call(rbind, lapply(species_presence, get.indices))
   
   nrow(master.index)
-
+  
   master.index <- master.index[,c(2,3,4,1)]
   
   ### should be site, yr, sp
@@ -165,32 +172,17 @@ prepare_occurrence <- function(countries, resolution, year_range, family_filter,
                        visit=paste0("v", 1:12),
                        sp=species_presence)
   
-  saveRDS(all_data_era, paste0("clean_data/data_prepared/my_data_era_genus_",countries, "_", resolution, "_", paste0(year_range, collapse = "_"), "_", family_filter, ".rds" ))
+  saveRDS(all_data_era, paste0("clean_data/data_prepared/my_data_era_shuffle_",countries, "_", resolution, "_", paste0(year_range, collapse = "_"), "_", family_filter, ".rds" ))
   
-  saveRDS(all_data_env, paste0("clean_data/data_prepared/my_data_env_genus_",countries, "_", resolution, "_", paste0(year_range, collapse = "_"), "_", family_filter,".rds" ))
+  saveRDS(all_data_env, paste0("clean_data/data_prepared/my_data_env_shuffle_",countries, "_", resolution, "_", paste0(year_range, collapse = "_"), "_", family_filter,".rds" ))
   
 }
 
 ## prepare occurrence for US 100
 
-prepare_occurrence("US", 100, c(1997, 2016), "ALL", 2)
-
 prepare_occurrence("US", 100, c(1997, 2016), "Apidae", 2)
 
-prepare_occurrence("US", 100, c(1997, 2016), "Andrenidae", 2)
 
-prepare_occurrence("US", 100, c(1997, 2016), "Colletidae", 2)
-
-prepare_occurrence("US", 100, c(1997, 2016), "Halictidae", 2)
-
-prepare_occurrence("US", 100, c(1997, 2016), "Megachilidae", 2)
-
-prepare_occurrence("US", 100, c(1997, 2016), "Melittidae", 2)
-
-
-## prepare occurrence for US 50
-
-prepare_occurrence("US", 50, c(1997, 2016),  "Apidae", 2)
 
 
 
