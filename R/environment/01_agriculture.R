@@ -20,6 +20,12 @@ library(cowplot)
 #### NLCD data comes at a 3m by 3m resolution, here we will re-project so its at 3km by 3km 
 ### this makes data handling easier 
 
+
+
+## percentage of county that is agriculture/ area of county that is agriculture
+
+
+
 ### Data only for the US from 2001 to 2016
 
 ## load crop data for ##

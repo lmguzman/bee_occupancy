@@ -14,16 +14,6 @@ my.data <- readRDS("clean_data/data_prepared/my_data_era_genus_US_100_1997_2016_
 family_load <- "Apidae"
 
 ## era
-res <- readRDS(paste0("model_outputs/res_US_100_1997_2016_ms_era_1_vp_",family_load,".rds"))
-
-res.summary <- readRDS(paste0("model_outputs/res.summary_US_100_1997_2016_ms_era_1_vp_",family_load,".rds"))
-
-
-
-
-family_load <- "Apidae"
-
-## era
 # res <- readRDS(paste0("model_outputs/res_US_100_1997_2016_ms_era_1_",family_load,".rds"))
 # 
 # res.summary <- readRDS(paste0("model_outputs/res.summary_US_100_1997_2016_ms_era_1_",family_load,".rds"))
@@ -40,21 +30,14 @@ my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_US_100_199
 
 
 
-# env
-res <- readRDS(paste0("model_outputs/res_US_100_1997_2016_ms_env_era_",family_load,".rds"))
+# env era
+# res <- readRDS(paste0("model_outputs/res_US_100_1997_2016_ms_env_era_",family_load,".rds"))
+# 
+# res.summary <- readRDS(paste0("model_outputs/res.summary_US_100_1997_2016_ms_env_era_",family_load,".rds"))
+# 
+# my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_US_100_1997_2016_",family_load,".rds"))
 
-res.summary <- readRDS(paste0("model_outputs/res.summary_US_100_1997_2016_ms_env_era_",family_load,".rds"))
 
-my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_US_100_1997_2016_",family_load,".rds"))
-
-
-
-# env
-res <- readRDS("model_outputs/res_US_100_1997_2016_ms_env_US_Apidaeshuffle.rds")
-
-res.summary <- readRDS("model_outputs/res.summary_US_100_1997_2016_ms_env_US_Apidaeshuffle.rds")
-
-my.data <- readRDS("clean_data/data_prepared/my_data_env_shuffle_US_100_1997_2016_Apidae.rds")
 
 ## check main trends
 
@@ -119,6 +102,78 @@ expit(-0.264 + -0.375)
 expit(-0.264 + -0.375 + -0.106*10)
 
 
+
+#### Check shuffle apidae 
+library(ggplot2)
+
+# env
+res <- readRDS("model_outputs/res_US_100_1997_2016_ms_env_US_Apidaeshuffle.rds")
+
+res.summary <- readRDS("model_outputs/res.summary_US_100_1997_2016_ms_env_US_Apidaeshuffle.rds")
+
+my.data <- readRDS("clean_data/data_prepared/my_data_env_shuffle_US_100_1997_2016_Apidae.rds")
+
+my.data[[1]]$prec %>% hist(xlab = "precipitation")
+
+prec_all <- my.data[[1]]$prec %>% 
+  as.data.frame() %>% 
+  tibble::rownames_to_column("site") %>% 
+  pivot_longer(names_to = 'year', values_to = 'precipitation', -site)
+
+prec_mean <- prec_all %>% group_by(year) %>% summarise(mean_prec = mean(precipitation))
+  
+ggplot(data = prec_all, aes(x = precipitation, fill = year)) +
+  geom_histogram() +
+  facet_wrap(~year) +
+  geom_vline(data = prec_mean, aes(xintercept = mean_prec))
+
+
+
+my.data[[1]]$agriculture %>% hist(xlab = "agriculture")
+
+agriculture_all <- my.data[[1]]$agriculture %>% 
+  as.data.frame() %>% 
+  tibble::rownames_to_column("site") %>% 
+  pivot_longer(names_to = 'year', values_to = 'agriculture', -site)
+
+agriculture_mean <- agriculture_all %>% group_by(year) %>% summarise(mean_v = mean(agriculture))
+
+ggplot(data = agriculture_all, aes(x = agriculture, fill = year)) +
+  geom_histogram() +
+  facet_wrap(~year) +
+  geom_vline(data = agriculture_mean, aes(xintercept = mean_v))
+
+
+
+my.data[[1]]$drought %>% hist(xlab = "drought")
+
+drought_all <- my.data[[1]]$drought %>% 
+  as.data.frame() %>% 
+  tibble::rownames_to_column("site") %>% 
+  pivot_longer(names_to = 'year', values_to = 'drought', -site)
+
+drought_mean <-drought_all %>% group_by(year) %>% summarise(mean_v = mean(drought))
+
+ggplot(data = drought_all, aes(x = drought, fill = year)) +
+  geom_histogram() +
+  facet_wrap(~year) +
+  geom_vline(data = drought_mean, aes(xintercept = mean_v))
+
+
+
+my.data[[1]]$floral %>% hist(xlab = "floral")
+
+floral_all <- my.data[[1]]$floral %>% 
+  as.data.frame() %>% 
+  tibble::rownames_to_column("site") %>% 
+  pivot_longer(names_to = 'year', values_to = 'floral', -site)
+
+floral_mean <-floral_all %>% group_by(year) %>% summarise(mean_v = mean(floral))
+
+ggplot(data = floral_all, aes(x = floral, fill = year)) +
+  geom_histogram() +
+  facet_wrap(~year) +
+  geom_vline(data = floral_mean, aes(xintercept = mean_v))
 
 
 

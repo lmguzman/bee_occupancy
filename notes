@@ -83,3 +83,17 @@ For each site sum the amount of pesticide
 then we add the different types of pesticides
 
 then log 
+
+---------
+
+Do all of the analyses at the county level
+- only include the counties that have sufficient number of records 
+- include log of area as a predictor as a predictor in the occupancy model 
+
+
+
+
+
+
+
+

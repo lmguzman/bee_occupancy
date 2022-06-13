@@ -110,6 +110,10 @@ state_county_fp <- us_counties[,c("STATEFP", "COUNTYFP")]
 
 spdf <- as_Spatial(state_county_fp)
 
+cont_usa <- state_county_fp %>% 
+  filter(!STATEFP %in% c("02", "15", "60", "66", "69", "72", "78"))
+
+
 ## Get LD50 data
 
 ### harvest LD50s
