@@ -6,7 +6,7 @@ library(dplyr)
 library(data.table)
 library(tidyr)
 library(stringr)
-
+library(sf)
 
 ##### U.S. Gridded Standardized Precipitation Index (SPI) from nClimGrid-Monthly ###
 
@@ -80,6 +80,48 @@ saveRDS(drought_all, "clean_data/drought/drought_all.rds")
 ## only works for US
 
 drought_all <- readRDS("clean_data/drought/drought_all.rds")
+
+### load sites 
+
+sites <- readRDS(paste0("clean_data/sites/sites_counties.rds"))
+
+## lat and long of observations
+
+lat_lon <- unique(drought_all[, .(lat, lon)]) %>% 
+  st_as_sf(
+    coords = c("lon", "lat"),
+    agr = "constant",
+    crs = 4326,  ##WGS84   
+    stringsAsFactors = FALSE,
+    remove = FALSE) %>% 
+  st_transform(4269)
+
+# get county for each observation
+
+site_obs <- st_join(lat_lon, sites, join = st_within)
+
+lat_site <- site_obs %>% 
+  st_drop_geometry() %>% 
+  as.data.table()
+
+setkeyv(lat_site, c("lat", "lon"))
+setkeyv(drought_all, c("lat", "lon"))
+
+drought_site_3 <- drought_recent[lat_site][!is.na(state_county)][, .(mean(V1), min(V2), max(V3), var(V1)), by = c("year","state_county")]
+
+colnames(drought_site_3) <- c("year", "state_county", "mean_drought", "min_drought", "max_drought", "var_drought")
+
+saveRDS(drought_site_3, file = paste0("clean_data/drought/drought_county.rds"))
+
+
+
+
+
+
+
+
+
+### old 
 
 drought_sites <- function(resolution){
   

@@ -137,7 +137,6 @@ model.jags <- function() {
     psi.nest[sp] ~ dnorm(mu.psi.nest, tau.psi.nest)
   }
 
-  
   #####
   
   for(sp in 1:nsp) {

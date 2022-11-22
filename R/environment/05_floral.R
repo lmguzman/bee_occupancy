@@ -296,6 +296,54 @@ land_use_cats <- paste0(c('spring_mean', 'summer_mean', 'fall_mean', 'ground_mea
                           'cavity_mean', 'stem_mean',  'wood_mean', 'floral_all', 'nesting_all'), "_all")
 
 
+## new
+
+
+sites <- readRDS(paste0("clean_data/sites/sites_counties.RDS"))
+
+for(i in land_use_cats){
+  
+  temp_df <- readRDS(paste0('raw_data/land_use/', i,'.rds'))
+  
+  lat_lon <- unique(temp_df[, .(x, y)]) %>% 
+    st_as_sf(
+      coords = c("x", "y"),
+      agr = "constant",
+      crs = 4326,  ##WGS84   
+      stringsAsFactors = FALSE,
+      remove = FALSE) %>% 
+    st_transform(4269)
+  
+  # get county for each observation
+  
+  site_obs <- st_join(lat_lon, sites, join = st_within)
+  
+  lat_site <- site_obs %>% 
+    st_drop_geometry() %>% 
+    as.data.table()
+  
+  setkeyv(lat_site, c("x", "y"))
+  setkeyv(temp_df, c("x", "y"))
+  
+  var_one <- c(str_remove(i, "_all"))
+
+  expr <- parse(text = paste0('mean(', var_one,')'))
+  
+  suitability <- temp_df[lat_site][!is.na(state_county)][, eval(expr), by = .(state_county, year)]
+  
+  colnames(suitability)[3] <- var_one
+  
+  saveRDS(suitability, paste0('clean_data/land_use/land_use_counties_',var_one,'.rds'))  
+  
+}
+
+
+
+
+
+### old
+
+
 flor_nest_sites <- function(countries, resolution){
   
   sites <- readRDS(paste0("clean_data/sites/sites_",countries,"_",resolution, ".rds"))

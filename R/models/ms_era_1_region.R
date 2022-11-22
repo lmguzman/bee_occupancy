@@ -70,7 +70,7 @@ model.jags <- function() {
         logit(p[site,yr,sp]) <-
           mu.p.0 +
           p.yr*(yr) +
-          exp.sp[sp] +
+          p.sp[sp] +
           p.site[site,yr]
         
       }

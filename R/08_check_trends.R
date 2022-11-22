@@ -2,43 +2,6 @@ library(dplyr)
 library(stringr)
 source("R/src/initialize.R")
 
-## era
-res <- readRDS("model_outputs/res_US_100_1997_2016_ms_era_1.rds")
-
-res.summary <- readRDS("model_outputs/res.summary_US_100_1997_2016_ms_era_1.rds")
-
-my.data <- readRDS("clean_data/data_prepared/my_data_era_genus_US_100_1997_2016_ALL.rds")
-
-## Apidae vp 
-
-family_load <- "Apidae"
-
-## era
-# res <- readRDS(paste0("model_outputs/res_US_100_1997_2016_ms_era_1_",family_load,".rds"))
-# 
-# res.summary <- readRDS(paste0("model_outputs/res.summary_US_100_1997_2016_ms_era_1_",family_load,".rds"))
-# 
-# my.data <- readRDS(paste0("clean_data/data_prepared/my_data_era_genus_US_100_1997_2016_",family_load,".rds"))
-
-
-# env
-res <- readRDS(paste0("model_outputs/res_US_100_1997_2016_ms_env_US_",family_load,".rds"))
-
-res.summary <- readRDS(paste0("model_outputs/res.summary_US_100_1997_2016_ms_env_US_",family_load,".rds"))
-
-my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_US_100_1997_2016_",family_load,".rds"))
-
-
-
-# env era
-# res <- readRDS(paste0("model_outputs/res_US_100_1997_2016_ms_env_era_",family_load,".rds"))
-# 
-# res.summary <- readRDS(paste0("model_outputs/res.summary_US_100_1997_2016_ms_env_era_",family_load,".rds"))
-# 
-# my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_US_100_1997_2016_",family_load,".rds"))
-
-
-
 ## check main trends
 
 get.summ <- function(pars) {
@@ -52,8 +15,59 @@ get.summ <- function(pars) {
 }
 
 
+
+
+region_v <- c("West","Center","NorthEast", "SouthEast")
+region <- "Center"
+family <- "ALL"
+year_range <- c(1995, 2015)
+model_v <- c("ms_era_1_area", "ms_env_US_area", "ms_env_era_area")
+
+
+## era
+model <- "ms_era_1_area"
+
+res <- readRDS(paste0("model_outputs/res_counties_", paste0(year_range, collapse = "_"), "_",model,"_", family, "_", region, ".rds"))
+
+res.summary <- readRDS(paste0("model_outputs/res.summary_counties_", paste0(year_range, collapse = "_"), "_",model,"_", family, "_", region, ".rds"))
+
+my.data <- readRDS(paste0("clean_data/data_prepared/my_data_era_genus_counties_", paste0(year_range, collapse = "_"),  "_", family, "_", region, ".rds"))
+
+
+# env
+model <- "ms_env_US_area"
+
+res <- readRDS(paste0("model_outputs/res_counties_", paste0(year_range, collapse = "_"), "_",model,"_", family, "_", region, ".rds"))
+
+res.summary <- readRDS(paste0("model_outputs/res.summary_counties_", paste0(year_range, collapse = "_"), "_",model,"_", family, "_", region, ".rds"))
+
+my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_counties_", paste0(year_range, collapse = "_"),  "_", family, "_", region, ".rds"))
+
+
+# env era
+model <- "ms_env_era_area_2"
+
+res <- readRDS(paste0("model_outputs/env_era/res_counties_", paste0(year_range, collapse = "_"), "_",model,"_", family, "_", region, ".rds"))
+
+res.summary <- readRDS(paste0("model_outputs/env_era/res.summary_counties_", paste0(year_range, collapse = "_"), "_",model,"_", family, "_", region, ".rds"))
+
+my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_counties_", paste0(year_range, collapse = "_"),  "_", family, "_", region, ".rds"))
+
+
+# env era
+model <- "ms_env_area_2"
+
+res <- readRDS(paste0("model_outputs/env/res_counties_", paste0(year_range, collapse = "_"), "_",model,"_", family, "_", region, ".rds"))
+
+res.summary <- readRDS(paste0("model_outputs/env/res.summary_counties_", paste0(year_range, collapse = "_"), "_",model,"_", family, "_", region, ".rds"))
+
+my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_counties_", paste0(year_range, collapse = "_"),  "_", family, "_", region, ".rds"))
+
+
 vars <- rownames(res.summary$psrf$psrf)
 summ <- get.summ(vars)
+
+summ[str_detect(rownames(summ), 'p.era'),]
 
 summ.paper <- summ[str_detect(rownames(summ), 'mu.psi'),]
 
@@ -61,9 +75,14 @@ summ.paper %>% View()
 
 
 
+res.summary
 
 
 
+
+
+
+####### Species trends ######
 
 species_trends <- cbind(data.frame(summ[str_detect(rownames(summ), 'psi.era'),]), species = my.data$sp)
 
