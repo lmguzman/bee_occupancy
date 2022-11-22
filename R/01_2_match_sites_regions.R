@@ -55,6 +55,7 @@ region_for_sites_final2 <- region_for_sites_final %>%
 
 saveRDS(region_for_sites_final2, "clean_data/sites/site_counties_region.rds")
 
+
 ## plot regions ##
 
 library(ggplot2)
@@ -65,6 +66,53 @@ library(cowplot)
 region_for_sites_final <- readRDS("clean_data/sites/site_counties_region.rds")
 
 region_for_sites_final$region %>% table()
+
+sites <- readRDS("clean_data/sites/sites_counties.rds")
+
+sites %>% 
+  left_join(region_for_sites_final) %>% 
+  ggplot() +
+  geom_sf(aes(fill = region)) +
+  theme_cowplot()
+
+
+## some sites in the center and on the north east could belong to other areas ##
+## manually check those counties and put them in the correct areas ##
+
+library(ggsflabel)
+
+sites %>% 
+  left_join(filter(region_for_sites_final, region == 'West')) %>% 
+  filter(!is.na(region)) %>% 
+  ggplot() +
+  geom_sf(aes(fill = region)) +
+  geom_sf_label(aes(label = state_county), size = 2) +
+  theme_cowplot() 
+
+## 56_011, 46_033, 46_081 should be in the Center
+
+
+sites %>% 
+  left_join(filter(region_for_sites_final, region == 'Center')) %>% 
+  filter(!is.na(region)) %>% 
+  ggplot() +
+  geom_sf(aes(fill = region)) +
+  geom_sf_label(aes(label = state_county), size = 1) +
+  theme_cowplot() 
+
+## 55_109, 27_037 should be in NE
+
+## update data with those regions 
+
+region_for_sites_final3 <- region_for_sites_final2 %>% 
+  mutate(region = ifelse(state_county %in% c("56_011", "46_033", "46_081"), "Center", region)) %>% 
+  mutate(region= ifelse(state_county %in% c("55_109", "27_037"), "NorthEast", region))
+
+saveRDS(region_for_sites_final3, "clean_data/sites/site_counties_region.rds")
+
+## check plot
+
+region_for_sites_final <- readRDS("clean_data/sites/site_counties_region.rds")
 
 sites <- readRDS("clean_data/sites/sites_counties.rds")
 
