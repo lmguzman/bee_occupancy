@@ -3,6 +3,7 @@ library(data.table)
 library(sf)
 library(stringr)
 library(tidyr)
+library(stringr)
 
 ##### new ####
 
@@ -74,8 +75,12 @@ sites <- readRDS("clean_data/sites/sites_counties.RDS")
 
 ## Get LD50 data from ECOTOX database
 
+ld50 <- read.csv("clean_data/pesticide/apis_ld50_mean.csv")
 
-
+ld50_dermal <- ld50 %>% 
+  mutate(COMPOUND = toupper(Chemical_short)) %>% 
+  filter(Exposure_Type == 'Dermal') %>% 
+  dplyr::select(COMPOUND, mean_ld50)
 
 ## load pesticide data
 neonics_all <- readRDS("clean_data/pesticide/neonics_county.rds")
@@ -93,8 +98,8 @@ neonics_all <- readRDS("clean_data/pesticide/neonics_county.rds")
     mutate(EPEST_HIGH_KG = ifelse(is.na(EPEST_HIGH_KG), 0, EPEST_HIGH_KG)) %>% 
     group_by(state_county, COMPOUND, YEAR) %>% 
     summarise(pest_site = sum(EPEST_HIGH_KG)) %>% 
-    left_join(dplyr::select(LD_50_clean, Active_Ingredient, Honey_Bee_Contact_LD_50_ug_bee), by = c("COMPOUND" = "Active_Ingredient")) %>% 
-    mutate(pest_site_ld50 = pest_site/Honey_Bee_Contact_LD_50_ug_bee)
+    left_join(ld50_dermal) %>% 
+    mutate(pest_site_ld50 = pest_site/mean_ld50)
   
   saveRDS(neonic_ld50, file = paste0("clean_data/pesticide/neonics_US_county.rds"))
   

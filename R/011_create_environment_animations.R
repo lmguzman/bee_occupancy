@@ -6,6 +6,9 @@ library(cowplot)
 library(tidyr)
 library(stringr)
 library(viridis)
+library(transformr)
+library(gifski)
+library(gganimate)
 
 ## temperature
 year_range <- c(1995, 2015)
@@ -76,11 +79,7 @@ for(yr in seq(1995, 2015, 3)){
 }
 
 ## animate 
-library(gganimate)
-library(transformr)
-library(gifski)
 
-library(gganimate)
 
 temperature_all <- ggplot(data = county_temperature) +
   geom_sf(aes(fill = max_t_year), colour = 'black', size = 0.1) +
@@ -249,7 +248,7 @@ county_neonic_all <- counties %>%
 county_neonic_summed <- counties %>% 
   full_join(neonic_sum_log)
 
-pest_all_scaled <- (pest_all- mean(pest_all))/sd(pest_all)
+#pest_all_scaled <- (pest_all- mean(pest_all))/sd(pest_all)
 
 
 ## compare for 1 year
@@ -257,8 +256,8 @@ pest_all_scaled <- (pest_all- mean(pest_all))/sd(pest_all)
 yr <- 2005
 
 ct_yr_nall <- county_neonic_all %>% 
-  filter(YEAR %in% yr) %>% 
-  filter(COMPOUND != "Dinotefuran")
+  filter(YEAR %in% yr)
+  #filter(COMPOUND != "Dinotefuran")
 
 neonic_all_plot <- ggplot() +
   geom_sf(data = ct_yr_nall, aes(fill = pest_site), colour = 'black', size = 0.1) +
