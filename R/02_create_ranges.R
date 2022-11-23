@@ -86,37 +86,6 @@ saveRDS(all_bees_geometry, file = paste0("clean_data/observations/observations_c
 
 
 ##### make ranges
-
-get_ranges <- function(data, species, sites){
-  
-  ## get unique lat lon for the species
-  
-  sel_sepecies <- data %>% 
-    filter(finalName == species)
-  
-  convex_hull <- sel_sepecies %>% 
-    st_geometry() %>% 
-    st_union() %>% 
-    st_convex_hull() 
-  
-  sites_in_range <- sites[st_intersects(sites, convex_hull) %>% lengths > 0,]
-  
-  site_range <- sites_in_range %>% 
-    st_drop_geometry() %>% unlist()
-  names(site_range) <- NULL
-  
-  ## plotting 
-  # ggplot() +
-  #   geom_sf(data = sites) +
-  #   geom_sf(data = sites_in_range, fill = 'blue', alpha = 0.2) +
-  #   geom_sf(data = convex_hull, fill = NA, colour = 'red') +
-  #   geom_sf(data = sel_sepecies, colour = 'red') +
-  #   ggtitle(species)
-  
-  return(site_range)
-}
-
-##  make_ranges_all
   
   ## load observations
   
@@ -132,19 +101,41 @@ get_ranges <- function(data, species, sites){
   
   ## run the make ranges for each species
   
-  ranges_all_sp <- lapply(all_sp, get_ranges, data = all_obs, sites = sites)
+  ##
+  range_list <- list()
   
-  names(ranges_all_sp) <- all_sp
+  for(species in all_sp){
+    ## get unique lat lon for the species
+    
+    sel_sepecies <- all_obs %>% 
+      filter(finalName == species)
+    
+    convex_hull <- sel_sepecies %>% 
+      st_geometry() %>% 
+      st_union() %>% 
+      st_convex_hull() 
+    
+    tryCatch(
+      expr = {
+        sites_in_range <- sites[st_intersects(sites, convex_hull) %>% lengths > 0,]
+        
+        site_range <- sites_in_range %>% 
+          st_drop_geometry() %>% unlist()
+        names(site_range) <- NULL
+        
+        range_list[[species]] <-site_range
+      },
+      error = function(e){ 
+        print("can't do")
+      }
+    )
+  }  
   
   ## remove empty ranges
   
-  final_ranges <- ranges_all_sp[!sapply(ranges_all_sp, is.null)]
+  final_ranges <- range_list[!sapply(range_list, is.null)]
   
   # save
   
   saveRDS(final_ranges, file = paste0("clean_data/ranges/ranges_counties.rds"))
   
-
-
-
-
