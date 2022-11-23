@@ -19,14 +19,12 @@ prepare_occurrence <- function( year_range, family_filter, oc_interval, region_f
   
   area <- readRDS("clean_data/sites/area_counties.RDS")
   
-  sites_with_neonics <-readRDS("clean_data/pesticide/sites_with_neonics.rds")
-  
   ## load regions and sites
   
   region_df <- readRDS("clean_data/sites/site_counties_region.rds")
   
   if(region_filter == "ALL"){
-    chosen_state_county <- sites_with_neonics
+    chosen_state_county <- paste0("s_",region_df$state_county)
   }else{
     chosen_state_county <- paste0("s_", filter(region_df, region == region_filter)$state_county)
     
@@ -37,10 +35,10 @@ prepare_occurrence <- function( year_range, family_filter, oc_interval, region_f
   ## arrange area 
   
   area_df <- area %>% 
-    mutate(site = paste0("s_", state_county)) 
+   mutate(site = paste0("s_", state_county)) 
   
   area_v <- area_df$area_m_2
-  
+
   names(area_v) <- area_df$site
   
   ## subset observations to sites in envrivonmental data and year range
@@ -59,38 +57,37 @@ prepare_occurrence <- function( year_range, family_filter, oc_interval, region_f
   
   sites_by_sp <- range_site_clean[unique(observations$finalName)]
   
-  sp_range_df <- data.table(map_df(sites_by_sp, ~ data.frame(site = .x), .id = "finalName"))
+  sites_by_sp_nonull <- sites_by_sp[unlist(lapply(sites_by_sp, FUN = function(x) !is.null(x)))]
+  
+  sp_range_df <- data.table(map_df(sites_by_sp_nonull, ~ data.frame(site = .x), .id = "finalName"))
   
   ## filter observations to only have observations within range 
   
   observations_clean <- inner_join(observations, sp_range_df)
   
-  #### get unique data ##
-  
-  colnames(observations_clean)[7] <- 'month'
+  #### add occupancy interval and visit interval  ##
   
   year_visit_df <- data.frame(oc_int = paste0("yr",rep(seq(year_range[1], (year_range[2]), oc_interval), each = oc_interval)), 
                               year = year_range[1]:year_range[2]) %>%
-    mutate(visit = rep(1:3, n()/3)) %>% 
-    # left_join(expand.grid(year = year_range[1]:year_range[2], month = 1:12) %>% 
-    #             arrange(year, month) %>%  
-    #             mutate(visit = case_when(month <=6 & year %% 2 != 0 ~ 1,
-    #                                      month >6 & year %% 2 != 0 ~ 2,
-    #                                      month <=6 & year %% 2 == 0 ~ 3,
-    #                                      month >6 & year %% 2 == 0 ~ 4)) %>% 
-    mutate(visit = paste0("v", visit)) %>% data.table()
-  
-  # setkeyv(observations_clean, c('year', 'month'))
-  # setkeyv(year_visit_df, c('year', 'month'))
+                  mutate(visit = rep(1:3, n()/3)) %>% 
+                mutate(visit = paste0("v", visit)) %>% data.table()
   
   setkey(observations_clean, 'year')
   setkey(year_visit_df, 'year')
   
   observations_clean_vis <- year_visit_df[observations_clean]
   
+  ## make sure genus is correct ##
+  
   observations_clean_vis$genus <- str_extract(observations_clean_vis$finalName, "[A-Z][a-z]*")
   
+  ## get unique observations for each visit interval and species 
+  
   observations_clean_sp <- distinct(observations_clean_vis[,.(finalName, site, oc_int, genus, visit)])
+  
+  write.csv(observations_clean_sp, paste0("clean_data/observations_used/", region_filter, ".csv"), row.names = FALSE)
+  
+  ## get data to create occupancy array
   
   species_presence <- sort(unique(observations_clean_sp$finalName))
   site_ID <- sort(unique(observations_clean_sp$site)) 
@@ -115,7 +112,8 @@ prepare_occurrence <- function( year_range, family_filter, oc_interval, region_f
   ## subset to species that are present
   sp.keep <- apply(occ.arr, 'sp', sum)>0
   all(sp.keep)
-  ## species counts per genus
+  
+  ## get visit array counts per genus
   
   nsp.arr.gen <- list()
   
@@ -134,6 +132,8 @@ prepare_occurrence <- function( year_range, family_filter, oc_interval, region_f
   
   sp_gen_directory <- unique(observations_clean_sp[, .(finalName, genus)]) 
   
+  ## get sites and visit intervals where each species should be modeled
+  
   get.indices <- function(sp) {
     vis.arr <- nsp.arr.gen[[sp_gen_directory[sp_gen_directory$finalName==sp,]$genus]]
     outside.range <- setdiff(dimnames(occ.arr)$site, sites_by_sp[[sp]])
@@ -151,7 +151,7 @@ prepare_occurrence <- function( year_range, family_filter, oc_interval, region_f
   master.index <- master.index[,c(2,3,4,1)]
   rownames(master.index) <- NULL
   
-  ### should be site, yr, sp
+  ### organize data for the occupancy model
   
   X <- occ.arr[master.index]
   
@@ -165,7 +165,9 @@ prepare_occurrence <- function( year_range, family_filter, oc_interval, region_f
                       nind=nrow(master.index), 
                       area=area_v[site_ID])
   
+  ## for the west to see if extreme temperatures were not helping
   #tmax_min <- environmental_data$tmax_mat[site_ID,yr_ID] - min(environmental_data$tmax_mat[site_ID,yr_ID])
+  #below write:  tmax = tmax_min/max(tmax_min),
   
   my.data.env <- list(X=X,
                       yr=master.index[,'year'],
@@ -176,16 +178,10 @@ prepare_occurrence <- function( year_range, family_filter, oc_interval, region_f
                       nyr=dim(occ.arr)['nyear'],
                       nind=nrow(master.index),
                       area=area_v[site_ID],
-                      #tmax = tmax_min/max(tmax_min),
-                      tmax = environmental_data$tmax_mat[site_ID,yr_ID],
+                      tmax = environmental_data$tmax_mat[site_ID,yr_ID], 
                       prec = environmental_data$prec_mat[site_ID,yr_ID],
                       pesticide1 = environmental_data$neonic_mat[site_ID,yr_ID],
-                      pesticide2 = environmental_data$gen_toxic_mat[site_ID,yr_ID],
-                      pesticide3 = environmental_data$pyr_mat[site_ID,yr_ID],
-                      agriculture = environmental_data$ag_mat[site_ID,yr_ID],
-                      drought = environmental_data$drought_mat[site_ID,yr_ID],
-                      floral = environmental_data$floral_mat[site_ID,yr_ID],
-                      nesting = environmental_data$nesting_mat[site_ID,yr_ID])
+                      agriculture = environmental_data$ag_mat[site_ID,yr_ID])
   
   
   all_data_era <- list(my.data.era, sp_gen_directory, sites_by_sp, 
@@ -200,24 +196,19 @@ prepare_occurrence <- function( year_range, family_filter, oc_interval, region_f
                        visit=paste0("v", 1:nvisit),
                        sp=species_presence)
   
-  saveRDS(all_data_era, paste0("clean_data/data_prepared/my_data_era_genus_counties_neonic_", paste0(year_range, collapse = "_"), "_", family_filter, "_", region_filter, ".rds" ))
+  saveRDS(all_data_era, paste0("clean_data/data_prepared/my_data_era_genus_counties_", paste0(year_range, collapse = "_"), "_", family_filter, "_", region_filter, ".rds" ))
   
-  saveRDS(all_data_env, paste0("clean_data/data_prepared/my_data_env_genus_counties_neonic_", paste0(year_range, collapse = "_"), "_", family_filter,"_", region_filter, ".rds" ))
+  saveRDS(all_data_env, paste0("clean_data/data_prepared/my_data_env_genus_counties_", paste0(year_range, collapse = "_"), "_", family_filter,"_", region_filter, ".rds" ))
   
 }
 
-## prepare occurrence for US 100
+## prepare occurrence for regions
 
-#prepare_occurrence( c(1995, 2014), "ALL", 2, "West")
+prepare_occurrence( c(1995, 2015), "ALL", 3, "West")
 
-prepare_occurrence( c(1995, 2015), "ALL", 3, "ALL")
+prepare_occurrence( c(1995, 2015), "ALL", 3, "Center")
 
-#### 
+prepare_occurrence( c(1995, 2015), "ALL", 3, "NorthEast")
 
-### only sites with neonics
-### normal scale of temperature (-10,0)
-#### all of the predictors on detection
-### if nothing works, then manipulate data for neonic signal 
-
-
+prepare_occurrence( c(1995, 2015), "ALL", 3, "SouthEast")
 
