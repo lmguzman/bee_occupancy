@@ -64,6 +64,8 @@ all_bees_geometry <- all_bees %>%
 
 
 ## remove Agapostemon angelicus as it is hard to identify from A. texanus
+## remove lassioglosum in the west
+## infer absences of Colletes Larreae -- which are the other species that are specialist to other Larreae specialist
 
 all_bees_geometry_final <- all_bees_geometry %>% 
   filter(finalName != "Agapostemon angelicus")

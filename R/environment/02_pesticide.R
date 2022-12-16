@@ -15,18 +15,6 @@ files_dir <- list.files(input_dir)
 
 ## create list of pesticides of interest -- compound names from above website
 
-gen_toxic <- list()
-
-gen_toxic_compounds <- c("ABAMECTIN", "CARBARYL", "OXAMYL", "PYRIDABEN", "ACEPHATE", 
-                         "CHLORETHOXYFOS", "CHLORPYRIFOS", "DIAZINON", "DIMETHOATE", 
-                         "MALATHION", "FIPRONIL", "SULFOXAFLOR")
-
-pyrethroid <- list()
-
-pyrethroid_compunds <- c("ALPHA CYPERMETHRIN", "BIFENTHRIN", "CYFLUTHRIN", 
-                         "DELTAMETHRIN", "ESFENVALERATE", "CYHALOTHRIN-GAMMA", "CYHALOTHRIN-LAMBDA", 
-                         "PERMETHRIN", "TEFLUTHRIN", "ZETA-CYPERMETHRIN")
-
 neonics <- list()
 
 neonic_compounds <- c("ACETAMIPRID", "CLOTHIANIDIN", "DINOTEFURAN", "IMIDACLOPRID", 
@@ -39,14 +27,6 @@ for(i in 1:length(files_dir)){
   
   # read files
   pesticide_data <- fread(paste0(input_dir,files_dir[i]))
-  
-  ## extract generic organophospahes
-  
-  gen_toxic[[i]] <- pesticide_data[COMPOUND %in% gen_toxic_compounds]
-  
-  ## extract pyrethroid
-  
-  pyrethroid[[i]] <- pesticide_data[COMPOUND %in% pyrethroid_compunds]
   
   ## extract neonicotinoid
   

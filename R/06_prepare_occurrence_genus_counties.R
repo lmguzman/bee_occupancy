@@ -6,7 +6,7 @@ library(sf)
 
 ## function to prepare occurrence data 
 
-prepare_occurrence <- function( year_range, family_filter, oc_interval, region_filter){
+prepare_occurrence <- function( year_range, family_filter, oc_interval, region_filter, strict_filter){
   
   ## load data
   observations_raw <- readRDS(paste0("clean_data/observations/observations_counties.rds"))
@@ -112,15 +112,51 @@ prepare_occurrence <- function( year_range, family_filter, oc_interval, region_f
   ## subset to species that are present
   sp.keep <- apply(occ.arr, 'sp', sum)>0
   all(sp.keep)
+
   
+  ## further filtering
+  
+  if(strict_filter == TRUE){
+    
+    ## Remove sites that were only sampled in 1 year 
+    
+    detection_site_year <- apply(occ.arr, c(1,2), sum)
+    
+    detection_site_year_m1 <- (detection_site_year > 0)*1
+    
+    sites_with_only_1_year <- names(rowSums(detection_site_year_m1)[rowSums(detection_site_year_m1) == 1])
+    
+    site_ID <- site_ID[!site_ID %in% sites_with_only_1_year]
+    
+    occ.arr <- occ.arr[site_ID,,,]
+    
+    ## remove species that have less than 3 sites in the region
+    
+    detection_site_species <- apply(occ.arr, c(1,4), sum)
+    
+    detection_site_species_m1 <- (detection_site_species > 0)*1
+    
+    species_with_less3_sites <- names(colSums(detection_site_species_m1)[colSums(detection_site_species_m1) <=3 ])
+    
+    species_presence <- species_presence[!species_presence %in% species_with_less3_sites]
+    
+    occ.arr <- occ.arr[,,,species_presence]
+    
+  }
+  
+ 
   ## get visit array counts per genus
   
   nsp.arr.gen <- list()
   
-  genera <- sort(unique(observations_clean_sp$genus))
+  sp_gen_directory <-  observations_clean_sp %>% 
+    filter(finalName %in% species_presence) %>% 
+    select(finalName, genus) %>% unique()
+  
+  genera <- sort(unique(sp_gen_directory$genus))
   
   for(g in genera){
-    sp_in_genus <- unique(observations_clean_sp[genus %in% g, finalName])
+    sp_in_genus <- unique(sp_gen_directory[genus %in% g, finalName])
     nsp.arr <- apply(occ.arr[,,,sp_in_genus], c('site','year','visit'), sum)
     vis.arr <- (nsp.arr>0)*1
     nsp.arr.gen[[g]] <- vis.arr
@@ -130,7 +166,7 @@ prepare_occurrence <- function( year_range, family_filter, oc_interval, region_f
   names(dim(occ.arr)) <- c('nsite', 'nyear', 'nvisit', 'nsp')
   dimnames(occ.arr) <- occ_dim_names
   
-  sp_gen_directory <- unique(observations_clean_sp[, .(finalName, genus)]) 
+  #sp_gen_directory <- unique(observations_clean_sp[, .(finalName, genus)]) 
   
   ## get sites and visit intervals where each species should be modeled
   
@@ -196,19 +232,19 @@ prepare_occurrence <- function( year_range, family_filter, oc_interval, region_f
                        visit=paste0("v", 1:nvisit),
                        sp=species_presence)
   
-  saveRDS(all_data_era, paste0("clean_data/data_prepared/my_data_era_genus_counties_", paste0(year_range, collapse = "_"), "_", family_filter, "_", region_filter, ".rds" ))
+  saveRDS(all_data_era, paste0("clean_data/data_prepared/my_data_era_genus_counties_", paste0(year_range, collapse = "_"), "_", family_filter, "_", region_filter, strict_filter,".rds" ))
   
-  saveRDS(all_data_env, paste0("clean_data/data_prepared/my_data_env_genus_counties_", paste0(year_range, collapse = "_"), "_", family_filter,"_", region_filter, ".rds" ))
+  saveRDS(all_data_env, paste0("clean_data/data_prepared/my_data_env_genus_counties_", paste0(year_range, collapse = "_"), "_", family_filter,"_", region_filter, strict_filter,".rds" ))
   
 }
 
 ## prepare occurrence for regions
 
-prepare_occurrence( c(1995, 2015), "ALL", 3, "West")
+prepare_occurrence( c(1995, 2015), "ALL", 3, "West", TRUE)
 
-prepare_occurrence( c(1995, 2015), "ALL", 3, "Center")
+prepare_occurrence( c(1995, 2015), "ALL", 3, "Center", TRUE)
 
-prepare_occurrence( c(1995, 2015), "ALL", 3, "NorthEast")
+prepare_occurrence( c(1995, 2015), "ALL", 3, "NorthEast", TRUE)
 
-prepare_occurrence( c(1995, 2015), "ALL", 3, "SouthEast")
+prepare_occurrence( c(1995, 2015), "ALL", 3, "SouthEast", TRUE)
 

@@ -1,0 +1,16 @@
+West
+             mean 2.5% 97.5% Rhat
+mu.psi.0 1.124 0.891 1.382 1.042
+mu.psi.yr -0.051 -0.096 0.004 1.073
+Center
+             mean 2.5% 97.5% Rhat
+mu.psi.0 1.287 0.309 2.143 1.002
+mu.psi.yr 0.493 0.3 0.743 1.227
+NorthEast
+             mean 2.5% 97.5% Rhat
+mu.psi.0 0.121 -0.17 0.598 1.086
+mu.psi.yr 0.068 0.013 0.125 1.015
+SouthEast
+             mean 2.5% 97.5% Rhat
+mu.psi.0 -0.112 -0.827 0.868 1.062
+mu.psi.yr 0.015 -0.151 0.134 1.042

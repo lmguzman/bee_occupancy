@@ -68,9 +68,9 @@ run_model <- function(year_range, model, family, region){
 
 run_model(c(1995, 2015), 'ms_era_1_area', "ALL", "Center")
 
-run_model(c(1995, 2015), 'ms_env_US_area', "ALL", "Center")
+run_model(c(1995, 2015), 'ms_env_area_2', "ALL", "Center")
 
-run_model(c(1995, 2015), 'ms_env_era_area', "ALL", "Center")
+run_model(c(1995, 2015), 'ms_env_era_area_2', "ALL", "Center")
 
 
 
