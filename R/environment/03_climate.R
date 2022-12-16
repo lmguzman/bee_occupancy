@@ -77,39 +77,3 @@ saveRDS(all_site_envirem, file = paste0("clean_data/climate/climate_counties.rds
 
 
 
-
-
-## old 
-
-extract_values_all_rasters <- function(resolution, countries){
-  
-  ## load sites 
-  sites <- readRDS(paste0("clean_data/sites/sites_", countries,"_",resolution, ".rds"))
-  
-  ## run the extraction
-  
-  inputDir <- "/Volumes/Rasters/USC/bee_occupancy/raw_data/climate/crop_rasters"
-  
-  files <- list.files(inputDir, pattern = '.tif$', full.names = TRUE)
-  
-  all_site_envirem <- mclapply(1:length(files), extract_values_site, mc.cores = 2)
-  
-  ## save
-  saveRDS(all_site_envirem, file = paste0("clean_data/climate/climate_",countries,"_",resolution, ".rds"))
-  
-}
-
-
-### extract climate for all resolutions and coutries
-
-extract_values_all_rasters(100, 'US')
-
-extract_values_all_rasters(50, 'US')
-
-
-extract_values_all_rasters(100, 'all')
-
-extract_values_all_rasters(50, 'all')
-
-
-

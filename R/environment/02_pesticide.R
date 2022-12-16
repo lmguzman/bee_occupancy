@@ -34,18 +34,9 @@ for(i in 1:length(files_dir)){
   
 }
 
-gen_toxic_all <- rbindlist(gen_toxic)
-
-pyrethroid_all <- rbindlist(pyrethroid)
-
 neonics_all <- rbindlist(neonics)
 
-
-saveRDS(gen_toxic_all, "clean_data/pesticide/gen_toxic_county.rds")
-saveRDS(pyrethroid_all, "clean_data/pesticide/pyrethroid_county.rds")
 saveRDS(neonics_all, "clean_data/pesticide/neonics_county.rds")
-
-
 
 ######## add pesticide data to sites ####
 
@@ -83,4 +74,3 @@ neonics_all <- readRDS("clean_data/pesticide/neonics_county.rds")
   
   saveRDS(neonic_ld50, file = paste0("clean_data/pesticide/neonics_US_county.rds"))
   
- 
