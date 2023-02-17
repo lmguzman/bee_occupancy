@@ -151,7 +151,7 @@ prepare_occurrence <- function( year_range, family_filter, oc_interval, region_f
   
   sp_gen_directory <-  observations_clean_sp %>% 
     filter(finalName %in% species_presence) %>% 
-    select(finalName, genus) %>% unique()
+    dplyr::select(finalName, genus) %>% unique()
   
   genera <- sort(unique(sp_gen_directory$genus))
   
@@ -247,4 +247,7 @@ prepare_occurrence( c(1995, 2015), "ALL", 3, "Center", TRUE)
 prepare_occurrence( c(1995, 2015), "ALL", 3, "NorthEast", TRUE)
 
 prepare_occurrence( c(1995, 2015), "ALL", 3, "SouthEast", TRUE)
+
+prepare_occurrence( c(1995, 2015), "ALL", 3, "ALL", FALSE)
+
 

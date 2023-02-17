@@ -121,3 +121,61 @@ sites %>%
   ggplot() +
   geom_sf(aes(fill = region)) +
   theme_cowplot()
+
+
+
+
+
+######## agrilcultural regions #######
+
+#https://www.ers.usda.gov/webdocs/publications/42298/32489_aib-760_002.pdf?v=42487
+
+agri_regions <- read.csv("raw_data/agricultural_regions/reglink.csv", skip = 2)
+
+sites <- readRDS("clean_data/sites/sites_counties.rds") %>% 
+  mutate(Fips = as.numeric(str_remove(state_county, "_")))
+
+regions_section <- agri_regions %>% 
+  select(Fips, ERS.resource.region) %>% 
+  mutate(region = case_when(ERS.resource.region ==1 ~ "Heartland", 
+                            ERS.resource.region ==2 ~ "Northern Crescent",
+                            ERS.resource.region ==3 ~ "Northern Great Plains",
+                            ERS.resource.region ==4 ~ "Prairie Gateway",
+                            ERS.resource.region ==5 ~ "Eastern Uplands",
+                            ERS.resource.region ==6 ~ "Southern Seaboard",
+                            ERS.resource.region ==7 ~ "Fruitful Rim",
+                            ERS.resource.region ==8 ~ "Basin and Range",
+                            ERS.resource.region ==9 ~ "Mississippi Portal")) %>% 
+  select(Fips, region) %>% 
+  full_join(sites) %>% 
+  select(-Fips) %>% 
+  mutate(region = ifelse(state_county == '08_014', "Northern Great Plains", region)) %>% 
+  mutate(region = ifelse(state_county == '46_102', "Northern Great Plains", region))
+
+region_for_site <- regions_section %>% 
+  select(region, state_county) %>% 
+  unique() %>% 
+  filter(!is.na(state_county))
+
+saveRDS(region_for_site, "clean_data/sites/site_counties_agriregion.rds")
+
+## plot regions ##
+
+library(ggplot2)
+library(sf)
+library(dplyr)
+library(cowplot)
+
+region_for_sites_final <- readRDS("clean_data/sites/site_counties_agriregion.rds")
+
+sites <- readRDS("clean_data/sites/sites_counties.rds")
+
+sites %>% 
+  left_join(region_for_sites_final) %>% 
+  ggplot() +
+  geom_sf(aes(fill = region)) +
+  theme_cowplot()
+
+
+
+

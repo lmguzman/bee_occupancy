@@ -16,7 +16,8 @@ create_data_for_plots <- function(region){
   year_range <- c(1995, 2015)
   
   # env era
-  model <- "ms_env_area_2"
+  #model <- "ms_env_area_2"
+  model <- "ms_env_area_2_uncons"
   
   res <- readRDS(paste0("model_outputs/env/res_counties_", paste0(year_range, collapse = "_"), "_",model,"_", family, "_", region, ".rds"))
   
@@ -282,3 +283,58 @@ for(re in 1:nrow(region_env)){
 
 
 
+################### just neonic results for the four regions ####
+
+region_v <- c("West", "Center","SouthEast", "NorthEast")
+
+mu.psi.all <- list()
+
+for(region in region_v){
+  
+  family <- "ALL"
+  year_range <- c(1995, 2015)
+  
+  # env era
+  model <- "ms_env_area_2"
+  
+  model <- "ms_env_area_2_uncons"
+  
+  res <- readRDS(paste0("model_outputs/env/res_counties_", paste0(year_range, collapse = "_"), "_",model,"_", family, "_", region, ".rds"))
+  
+  res.summary <- readRDS(paste0("model_outputs/env/res.summary_counties_", paste0(year_range, collapse = "_"), "_",model,"_", family, "_", region, ".rds"))
+  
+  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_counties_", paste0(year_range, collapse = "_"),  "_", family, "_", region, ".rds"))
+  
+  
+  vars <- rownames(res.summary$psrf$psrf)
+  summ <- get.summ(vars, res.summary)
+  
+  summ.paper <- summ[str_detect(rownames(summ), 'mu.psi'),]
+  
+  mu.psi.all[[region]] <- summ.paper %>% 
+    data.frame() %>% 
+    tibble::rownames_to_column("Variable") 
+}
+  
+
+
+
+data.frame(region = c('West', "Center", "SouthEast", "NorthEast"), 
+           region_nice = c('West', "Center", "South East", "North East"))
+
+
+mu.psi.all %>% 
+  map_df(~data.frame(.x), .id = 'region') %>% 
+  left_join(data.frame(region = c('West', "Center", "SouthEast", "NorthEast"), 
+                       region_nice = c('West', "Center", "South East", "North East"))) %>% 
+  filter(!Variable %in% c("mu.psi.0", "mu.psi.tmax2")) %>% 
+  ggplot() +
+  facet_wrap(~Variable, scales = 'free') +
+  geom_point(aes(x = mean, y = region_nice)) + 
+  geom_errorbarh(aes(xmin = `X2.5.`, xmax = `X97.5.`, y = region_nice), height = 0) + 
+  geom_vline(xintercept = 0, colour = 'grey', linetype = 'dashed') +
+  theme_cowplot() +
+  xlab("Slope") + ylab("")  +
+  theme(strip.background = element_blank())
+
+  

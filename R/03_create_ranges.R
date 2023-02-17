@@ -9,8 +9,10 @@ library(stringr)
 
 ## load data
 
-all_obs <- fread("/Volumes/Rasters/USC/bee_occupancy/raw_data/observations/cleaned_contiguousUS_records.csv")
+#all_obs <- fread("/Volumes/Rasters/USC/bee_occupancy/raw_data/observations/cleaned_contiguousUS_records.csv")
   
+all_obs <- fread("raw_data/data/cleaned_contiguousUS_records.csv")
+
 ## get unique locations and years
 
 all_small <- distinct(all_obs[,.(finalName,family, genus, eventDate, finalLatitude, finalLongitude, year, month)][!is.na(year)])
@@ -31,16 +33,19 @@ all_small2 <- all_small_clean[!(finalName %in% species_to_remove)]
 ## load site data 
 sites <- readRDS(paste0("clean_data/sites/sites_counties.rds"))
 
+
 ## add geometry for each lat and long
 
 lat_lon <- all_small2 %>% 
   st_as_sf(
   coords = c("finalLongitude", "finalLatitude"),
   agr = "constant",
-  crs = 4326,  ##WGS84   
+  #crs = 4326,  ##WGS84   
+  crs = 4269,
   stringsAsFactors = FALSE,
-  remove = FALSE) %>% 
-  st_transform(4269)
+  remove = FALSE) 
+# %>% 
+#   st_transform(4269)
 
 # get county for each observation
 
@@ -95,7 +100,7 @@ saveRDS(all_bees_geometry, file = paste0("clean_data/observations/observations_c
   
   ## load sites
   
-  sites <- readRDS(paste0("clean_data/sites/sites_counties.rds"))
+  sites <- readRDS(paste0("clean_data/sites/sites_counties.rds")) 
   
   ## get all species
   
@@ -111,7 +116,7 @@ saveRDS(all_bees_geometry, file = paste0("clean_data/observations/observations_c
     
     sel_sepecies <- all_obs %>% 
       filter(finalName == species)
-    
+  
     convex_hull <- sel_sepecies %>% 
       st_geometry() %>% 
       st_union() %>% 

@@ -356,7 +356,29 @@ animate(neonic_animation, height = 500, width = 800)
 anim_save("plots/environment/animations/neonic.gif")
 
 
-### neonic 2013 and region ###
+### neonic 1995, 2013 and region ###
+
+## increase in neonic between 1995 and 2013 
+yr <- c(1995, 2013)
+
+ct_yr_nsum <- county_neonic_summed %>% 
+  filter(YEAR %in% yr)
+
+neonic_year <- ggplot() +
+  geom_sf(data = ct_yr_nsum, aes(fill = loged_summed_pest), colour = 'grey', size = 0.1) +
+  theme_cowplot() +
+  scale_fill_viridis(name = "Pesticide Use \n (log scale)", option = 'viridis', direction = -1) +
+  theme(legend.position = "bottom", 
+        axis.text = element_blank(), 
+        axis.ticks = element_blank(), 
+        axis.line = element_blank(), 
+        strip.background = element_blank()) +
+  facet_wrap(~YEAR, nrow = 2)
+
+ggsave(neonic_year, filename = "plots/environment/pesticide/neonic_region_logged1995.pdf")
+
+
+## 2013 by region 
 
 yr <- 2013
 
@@ -382,12 +404,31 @@ neonic_region <- ggplot() +
         axis.text = element_blank(), 
         axis.ticks = element_blank(), 
         axis.line = element_blank()) +
-  geom_sf(data = regions_combined$NorthEast, fill = "transparent", colour = 'black') +
-  geom_sf(data = regions_combined$SouthEast, fill = "transparent", colour = 'black') +
-  geom_sf(data = regions_combined$West,fill = "transparent",  colour = 'black') +
-  geom_sf(data = regions_combined$Center, fill = "transparent", colour = 'black')
+  geom_sf(data = regions_combined$NorthEast, fill = "transparent", colour = 'black', size = 0.9) +
+  geom_sf(data = regions_combined$SouthEast, fill = "transparent", colour = 'black', size = 0.9) +
+  geom_sf(data = regions_combined$West,fill = "transparent",  colour = 'black', size = 0.9) +
+  geom_sf(data = regions_combined$Center, fill = "transparent", colour = 'black', size = 0.9)
 
 ggsave(neonic_region, filename = "plots/environment/pesticide/neonic_region_logged.jpeg")
+
+ggsave(neonic_region, filename = "plots/environment/pesticide/neonic_region_logged.pdf")
+
+
+
+ct_yr_nsum_region <- ct_yr_nsum %>% 
+  left_join(region_df)
+
+neonic_region_split <- ggplot() +
+  geom_sf(data = ct_yr_nsum_region, aes(fill = loged_summed_pest), colour = 'grey', size = 0.1) +
+  theme_cowplot() +
+  scale_fill_viridis(name = "Pesticide Use 2013 \n (log scale)", option = 'viridis', direction = -1) +
+  theme(legend.position = "bottom", 
+        axis.text = element_blank(), 
+        axis.ticks = element_blank(), 
+        axis.line = element_blank())  +
+  facet_wrap(~region)
+
+ggsave(neonic_region_split, filename = "plots/environment/pesticide/neonic_region_split.pdf")
 
 
 ### plot regions
@@ -397,10 +438,11 @@ region_df <- readRDS("clean_data/sites/site_counties_region.rds")
 counties <- readRDS("clean_data/sites/sites_counties.RDS")
 
 counties_region <- counties %>% 
-  left_join(region_df)
+  left_join(region_df) %>% 
+  left_join(data.frame(region = unique(region_df$region), region_nice = c("West", "South East", "North East", "Center" )))
 
 region_map <- ggplot(data = counties_region) +
-  geom_sf(aes(fill = region), colour = 'black', size = 0.1) +
+  geom_sf(aes(fill = region_nice), colour = 'black', size = 0.1) +
   theme_cowplot() +
   scale_fill_discrete(name = "Region")  +
   theme(axis.title=element_blank(),
@@ -411,3 +453,5 @@ region_map <- ggplot(data = counties_region) +
 
 
 ggsave(region_map, filename = "plots/environment/regions.jpeg")
+ggsave(region_map, filename = "plots/environment/regions.pdf")
+
