@@ -2,14 +2,13 @@ library(stringr)
 
 source("R/src/initialize.R")
 
-run_model <- function(year_range, model, family, region){
+run_model <- function(year_range, model, family, region, pest){
   
   ## load data
     
-    all_data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_agriregion_", paste0(year_range, collapse = "_"), "_", family, "_", region,".rds" ))
+    all_data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_",pest, paste0(year_range, collapse = "_"), "_", family, "_", region,".rds" ))
     
-  
-  ## assign data to main vars
+    ### assign data to main vars
   
   my.data <- all_data[[1]]
   nsite <- length(all_data$site)
@@ -29,10 +28,10 @@ run_model <- function(year_range, model, family, region){
   
   
   ## MCMC settings 
-  n.burnin <- 1e2
-  n.adapt  <- 1e2
-  n.iter   <- 1e4
-  n.thin   <- 1e2
+  n.burnin <- 1e3
+  n.adapt  <- 1e3
+  n.iter   <- 1e5
+  n.thin   <- 1e3
   
   ## source JAGS model
   source(sprintf('R/models/%s.R', model))
@@ -50,23 +49,22 @@ run_model <- function(year_range, model, family, region){
                   adapt=n.adapt,
                   method='parallel')
   
-  saveRDS(res, paste0("model_outputs/res_agriregion_", paste0(year_range, collapse = "_"), "_",model,"_", family, "_", region, ".rds"))
+  saveRDS(res, paste0("model_outputs/res_genus_filtered_agriregion_", pest, paste0(year_range, collapse = "_"), "_",model,"_", family, "_", region, ".rds"))
   
   
   res.summary <-  add.summary(res)
   
   
-  saveRDS(res.summary, paste0("model_outputs/res.summary_agriregion_", paste0(year_range, collapse = "_"), "_",model,"_", family, "_", region, ".rds"))
+  saveRDS(res.summary, paste0("model_outputs/res.summary_genus_filtered_agriregion_", pest,paste0(year_range, collapse = "_"), "_",model,"_", family, "_", region, ".rds"))
   
 }
 
-agriregions <- paste0(str_replace_all(c("Southern Seaboard", "Eastern Uplands","Basin and Range",  
-                 "Fruitful Rim", "Mississippi Portal", "Prairie Gateway",
-                 "Northern Great Plains","Northern Crescent", "Heartland"), 
-                 " ", "_"), "FALSE")
-
+agriregions <- paste0(str_replace_all(c("Basin and Range", "South East",
+                                        "Fruitful Rim",  
+                                        "Northern Great Plains","Northern Crescent", "Central"), 
+                                      " ", "_"), "FALSE")
 for(r in agriregions){
-  run_model(c(1995, 2015), 'ms_env_area_2', "ALL", r)
+  run_model(c(1995, 2015), 'ms_env_area_2', "ALL", r, "both_")
 }
 
 

@@ -210,3 +210,108 @@ observations[finalName == species_decreasing$species[3], .N, .(year)] %>%
 all_obs[finalName == species_decreasing$species[1], .(year, finalLatitude, finalLongitude, recordedBy, stateProvince)][,.N, year] %>% 
   arrange()
 
+
+
+########## nesting######
+
+my.data <- readRDS("clean_data/data_prepared/my_data_env_genus_counties_trait_1995_2015_ALL_CenterFALSE.rds")
+
+res <- readRDS("model_outputs/res_counties_1995_2015_ms_env_area_nest2_ALL_CenterFALSE.rds")
+
+res.summary <- readRDS("model_outputs/res.summary_counties_1995_2015_ms_env_area_nest2_ALL_CenterFALSE.rds")
+
+
+vars <- rownames(res.summary$psrf$psrf)
+summ <- get.summ(vars)
+
+summ[str_detect(rownames(summ), 'p.era'),]
+
+summ.paper <- summ[str_detect(rownames(summ), 'mu.psi'),]
+
+
+
+my.data <- readRDS("clean_data/data_prepared/my_data_env_genus_counties_trait_1995_2015_ALL_SouthEastFALSE.rds")
+
+res <- readRDS("model_outputs/res_counties_1995_2015_ms_env_area_nest2_ALL_SouthEastFALSE.rds")
+
+res.summary <- readRDS("model_outputs/res.summary_counties_1995_2015_ms_env_area_nest2_ALL_SouthEastFALSE.rds")
+
+
+vars <- rownames(res.summary$psrf$psrf)
+summ <- get.summ(vars)
+
+summ[str_detect(rownames(summ), 'p.era'),]
+
+summ.paper <- summ[str_detect(rownames(summ), 'mu.psi'),]
+
+
+########## agriregions ######
+
+region_df <- readRDS("clean_data/sites/site_counties_agriregion.rds") %>% 
+  mutate(region_collapsed = case_when(region %in% c("Southern Seaboard", "Eastern Uplands",
+                                                    "Mississippi Portal") ~ "South East",
+                                      region %in% c("Heartland", "Prairie Gateway") ~ "Central",
+                                      TRUE ~ region))
+
+regions <- str_replace_all(unique(region_df$region_collapsed), " ", "_")
+
+for(r in regions[5:6]){
+  
+  res <- readRDS(paste0("model_outputs/res_agriregion_pyr_1995_2015_ms_env_area_2_ALL_",r,"FALSE.rds"))
+  
+  res.summary <- readRDS(paste0("model_outputs/res.summary_agriregion_pyr_1995_2015_ms_env_area_2_ALL_",r,"FALSE.rds"))
+  
+  vars <- rownames(res.summary$psrf$psrf)
+  summ <- get.summ(vars)
+  
+  summ[str_detect(rownames(summ), 'p.era'),]
+  
+  summ.paper <- summ[str_detect(rownames(summ), 'mu.psi'),]
+  
+  print(r)
+  print(summ.paper)
+
+  
+}
+
+
+
+########## nesting agriregions ######
+
+for(r in regions){
+  
+  res <- readRDS(paste0("model_outputs/res_trait_agriregion_pyr_1995_2015_ms_env_area_nest2_ALL_",r,"FALSE.rds"))
+  
+  res.summary <- readRDS(paste0("model_outputs/res.summary_trait_agriregion_pyr_1995_2015_ms_env_area_nest2_ALL_",r,"FALSE.rds"))
+  
+  vars <- rownames(res.summary$psrf$psrf)
+  summ <- get.summ(vars)
+  
+  summ[str_detect(rownames(summ), 'p.era'),]
+  
+  summ.paper <- summ[str_detect(rownames(summ), 'mu.psi'),]
+  
+  print(r)
+  print(summ.paper)
+  
+  
+}
+
+
+
+########## all all model ######
+
+
+res <- readRDS("model_outputs/all_all_chains/res_counties_1995_2015_ms_env_area_2_ALL_ALLFALSE.rds")
+
+res.summary <- readRDS("model_outputs/all_all_chains/res.summary_counties_1995_2015_ms_env_area_2_ALL_ALLFALSE.rds")
+
+vars <- rownames(res.summary$psrf$psrf)
+summ <- get.summ(vars)
+
+summ[str_detect(rownames(summ), 'p.era'),]
+
+summ.paper <- summ[str_detect(rownames(summ), 'mu.psi'),]
+
+plot(1:length(res$mcmc[[1]][, "mu.psi.pest1"]), res$mcmc[[1]][, "mu.psi.pest1"], 
+     type = 'l')

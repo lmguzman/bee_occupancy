@@ -13,6 +13,8 @@ library(stringr)
   
 all_obs <- fread("raw_data/data/cleaned_contiguousUS_records.csv")
 
+sum(str_detect(all_obs$finalName, "Bombus"))
+
 ## get unique locations and years
 
 all_small <- distinct(all_obs[,.(finalName,family, genus, eventDate, finalLatitude, finalLongitude, year, month)][!is.na(year)])

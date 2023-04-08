@@ -13,9 +13,13 @@ prepare_environmental_data <- function(scaling,year_range){
   
   prec_mat <- prepare_prec(scale, year_range, center = TRUE)
   
-  ## prepare neonics
+  ## prepare pesticides
   
   neonic_mat <- prepare_pesticide(year_range, "neonics")
+  
+  pyr_mat <- prepare_pesticide(year_range, "pyr")
+  
+  both_mat <- prepare_pesticide(year_range, "both")
   
   ## prepare agriculture
   
@@ -31,6 +35,8 @@ prepare_environmental_data <- function(scaling,year_range){
                                prec_mat = prec_mat[site_id,final_year],
                                ag_mat = ag_mat[site_id,final_year], 
                                neonic_mat = neonic_mat[site_id,final_year], 
+                               pyr_mat = pyr_mat[site_id, final_year],
+                               both_mat = both_mat[site_id, final_year],
                                site_id = site_id)
   
   saveRDS(environment_prepared, file = paste0("clean_data/data_prepared/environment_counties_", paste0(year_range, collapse = '_'), ".rds"))
@@ -109,8 +115,22 @@ prepare_prec <- function(scaling, year_range, ...){
 
 prepare_pesticide <- function(year_range, pesticide){
   
-  pesticide_raw <- readRDS(paste0("clean_data/pesticide/", pesticide,"_US_county.rds")) %>% 
-    as.data.table()
+  if(pesticide == 'both'){
+    
+    neonic_raw <- readRDS("clean_data/pesticide/neonics_US_county.rds") %>% 
+      as.data.table()
+    
+    pyr_raw <- readRDS("clean_data/pesticide/pyr_US_county.rds")%>% 
+      as.data.table()
+    
+    pesticide_raw <- rbind(neonic_raw, pyr_raw)
+    
+  }else{
+    pesticide_raw <- readRDS(paste0("clean_data/pesticide/", pesticide,"_US_county.rds")) %>% 
+      as.data.table()
+  }
+  
+  
   
   # if(year_range[1] < min(pesticide_raw$YEAR)){return("year range outside of data bounds")}
   # if(year_range[2] > max(pesticide_raw$YEAR)){return("year range outside of data bounds")}
@@ -128,7 +148,8 @@ prepare_pesticide <- function(year_range, pesticide){
   setkeyv(year_site, c("YEAR", "state_county", "COMPOUND"))
   setkeyv(pesticide_raw,  c("YEAR", "state_county", "COMPOUND"))
   
-  pesticide_all_sites <- pesticide_raw[year_site] %>% 
+  pesticide_all_sites <- year_site %>% 
+    left_join(pesticide_raw) %>% 
     mutate(pest_site_ld50 = ifelse(is.na(pest_site_ld50), 0, pest_site_ld50)) %>% 
     #mutate(site = paste0("s", str_pad(str_remove(site,"s"), width = 3, pad = "0", side = 'left'))) %>% 
     mutate(site = paste0("s_", state_county)) %>%
@@ -178,7 +199,9 @@ prepare_agriculture <- function(scaling, ...){
     
     year_site <- expand.grid(new_year = paste0('yr', 1995:2016), state_county = all_us_sites$state_county)
     
+  
     agriculture_mat <- agriculture %>% 
+      ### interpolates the same data to every intermediate year based on ag year
       left_join(ag_year) %>% 
       dplyr::select(new_year, state_county, percent_agriculture) %>% 
       full_join(year_site) %>% 

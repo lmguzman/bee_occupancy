@@ -19,14 +19,20 @@ prepare_occurrence <- function( year_range, family_filter, oc_interval, region_f
   
   area <- readRDS("clean_data/sites/area_counties.RDS")
   
+  nest_loc <- read.csv("clean_data/traits/nesting_location_genus.csv")
+  
   ## load regions and sites
   
-  region_df <- readRDS("clean_data/sites/site_counties_agriregion.rds")
+  region_df <- readRDS("clean_data/sites/site_counties_agriregion.rds") %>% 
+    mutate(region_collapsed = case_when(region %in% c("Southern Seaboard", "Eastern Uplands",
+                                                      "Mississippi Portal") ~ "South East",
+                                        region %in% c("Heartland", "Prairie Gateway") ~ "Central",
+                                        TRUE ~ region))
   
   if(region_filter == "ALL"){
     chosen_state_county <- paste0("s_",region_df$state_county)
   }else{
-    chosen_state_county <- paste0("s_", filter(region_df, region == region_filter)$state_county)
+    chosen_state_county <- paste0("s_", filter(region_df, region_collapsed == region_filter)$state_county)
     
   }
   
@@ -81,11 +87,22 @@ prepare_occurrence <- function( year_range, family_filter, oc_interval, region_f
   
   observations_clean_vis$genus <- str_extract(observations_clean_vis$finalName, "[A-Z][a-z]*")
   
+  observations_clean_vis <- observations_clean_vis %>% 
+    left_join(nest_loc) %>% 
+    filter(!is.na(NestLoc)) %>% 
+    filter(!NestLoc == "")
+  
   ## get unique observations for each visit interval and species 
   
-  observations_clean_sp <- distinct(observations_clean_vis[,.(finalName, site, oc_int, genus, visit)])
+  observations_clean_sp <- distinct(observations_clean_vis[,.(finalName, site, oc_int, genus, visit, NestLoc)])
   
   write.csv(observations_clean_sp, paste0("clean_data/observations_used/", region_filter, ".csv"), row.names = FALSE)
+  
+  nest_df <- distinct(observations_clean_sp[,.(finalName, NestLoc)])
+  
+  nest <- as.numeric(factor(nest_df$NestLoc))
+  
+  names(nest) <- nest_df$finalName
   
   ## get data to create occupancy array
   
@@ -98,6 +115,7 @@ prepare_occurrence <- function( year_range, family_filter, oc_interval, region_f
   nyr <- length(unique(observations_clean_sp$oc_int))
   nsp <- length(unique(observations_clean_sp$finalName))
   nvisit <- length(unique(observations_clean_sp$visit))
+  nnest <- length(unique(nest))
   
   ## create occupancy array ##
   
@@ -203,11 +221,13 @@ prepare_occurrence <- function( year_range, family_filter, oc_interval, region_f
                       nsite=dim(occ.arr)['nsite'],
                       nyr=dim(occ.arr)['nyear'],
                       nind=nrow(master.index),
+                      nnest=nnest, 
                       area=area_v[site_ID],
                       tmax = environmental_data$tmax_mat[site_ID,yr_ID], 
                       prec = environmental_data$prec_mat[site_ID,yr_ID],
                       pesticide1 = environmental_data$neonic_mat[site_ID,yr_ID],
-                      agriculture = environmental_data$ag_mat[site_ID,yr_ID])
+                      agriculture = environmental_data$ag_mat[site_ID,yr_ID], 
+                      nest=nest[species_presence])
 
   
   all_data_env <- list(my.data.env, sp_gen_directory, sites_by_sp, 
@@ -217,19 +237,86 @@ prepare_occurrence <- function( year_range, family_filter, oc_interval, region_f
                        sp=species_presence)
 
   
-  saveRDS(all_data_env, paste0("clean_data/data_prepared/my_data_env_genus_agriregion_", paste0(year_range, collapse = "_"), "_", family_filter,"_", str_replace_all(unique(region_filter), " ", "_"), strict_filter,".rds" ))
+  saveRDS(all_data_env, paste0("clean_data/data_prepared/my_data_env_genus_trait_agriregion_", paste0(year_range, collapse = "_"), "_", family_filter,"_", str_replace_all(unique(region_filter), " ", "_"), strict_filter,".rds" ))
+  
+  ## pyretrhoids
+  
+  my.data.env <- list(X=X,
+                      yr=master.index[,'year'],
+                      site=master.index[,'site'],
+                      sp=master.index[,'sp'],
+                      nsp=dim(occ.arr)['nsp'],
+                      nsite=dim(occ.arr)['nsite'],
+                      nyr=dim(occ.arr)['nyear'],
+                      nind=nrow(master.index),
+                      nnest=nnest, 
+                      area=area_v[site_ID],
+                      tmax = environmental_data$tmax_mat[site_ID,yr_ID], 
+                      prec = environmental_data$prec_mat[site_ID,yr_ID],
+                      pesticide1 = environmental_data$pyr_mat[site_ID,yr_ID],
+                      agriculture = environmental_data$ag_mat[site_ID,yr_ID], 
+                      nest=nest[species_presence])
+  
+  
+  all_data_env <- list(my.data.env, sp_gen_directory, sites_by_sp, 
+                       site=site_ID,
+                       year= yr_ID,
+                       visit=paste0("v", 1:nvisit),
+                       sp=species_presence)
+  
+  
+  saveRDS(all_data_env, paste0("clean_data/data_prepared/my_data_env_genus_trait_agriregion_pyr_", paste0(year_range, collapse = "_"), "_", family_filter,"_", str_replace_all(unique(region_filter), " ", "_"), strict_filter,".rds" ))
+  
+  
+  
+  ## summed pyrethroids and neonics
+  
+  my.data.env <- list(X=X,
+                      yr=master.index[,'year'],
+                      site=master.index[,'site'],
+                      sp=master.index[,'sp'],
+                      nsp=dim(occ.arr)['nsp'],
+                      nsite=dim(occ.arr)['nsite'],
+                      nyr=dim(occ.arr)['nyear'],
+                      nind=nrow(master.index),
+                      nnest=nnest, 
+                      area=area_v[site_ID],
+                      tmax = environmental_data$tmax_mat[site_ID,yr_ID], 
+                      prec = environmental_data$prec_mat[site_ID,yr_ID],
+                      pesticide1 = environmental_data$both[site_ID,yr_ID],
+                      agriculture = environmental_data$ag_mat[site_ID,yr_ID], 
+                      nest=nest[species_presence])
+  
+  
+  all_data_env <- list(my.data.env, sp_gen_directory, sites_by_sp, 
+                       site=site_ID,
+                       year= yr_ID,
+                       visit=paste0("v", 1:nvisit),
+                       sp=species_presence)
+  
+  
+  saveRDS(all_data_env, paste0("clean_data/data_prepared/my_data_env_genus_trait_agriregion_both_", paste0(year_range, collapse = "_"), "_", family_filter,"_", str_replace_all(unique(region_filter), " ", "_"), strict_filter,".rds" ))
   
 }
 
 ## prepare occurrence for regions
 
-region_df <- readRDS("clean_data/sites/site_counties_agriregion.rds")
+region_df <- readRDS("clean_data/sites/site_counties_agriregion.rds") %>% 
+  mutate(region_collapsed = case_when(region %in% c("Southern Seaboard", "Eastern Uplands",
+                                                    "Mississippi Portal") ~ "South East",
+                                      region %in% c("Heartland", "Prairie Gateway") ~ "Central",
+                                      TRUE ~ region))
 
-for(r in unique(region_df$region)){
+
+for(r in unique(region_df$region_collapsed)){
   prepare_occurrence( c(1995, 2015), "ALL", 3, r, FALSE)
   
 }
 
+agriregions <- paste0(str_replace_all(c("Basin and Range", "South East",
+                                        "Fruitful Rim",  
+                                        "Northern Great Plains","Northern Crescent", "Central"), 
+                                      " ", "_"), "FALSE")
 
 
 

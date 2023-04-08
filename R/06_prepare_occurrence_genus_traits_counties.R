@@ -85,7 +85,8 @@ prepare_occurrence <- function( year_range, family_filter, oc_interval, region_f
   
   observations_clean_vis <- observations_clean_vis %>% 
     left_join(nest_loc) %>% 
-    filter(!is.na(NestLoc))
+    filter(!is.na(NestLoc)) %>% 
+    filter(!NestLoc == "")
 
   ## get unique observations for each visit interval and species 
   

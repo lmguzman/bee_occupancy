@@ -10,7 +10,9 @@ source("R/src/initialize.R")
 source("R/src/plot_ocu_env_functions.R")
 
 
-create_data_for_plots <- function(region){
+
+
+create_data_for_plots <- function(region, pest){
   
   family <- "ALL"
   year_range <- c(1995, 2015)
@@ -18,12 +20,12 @@ create_data_for_plots <- function(region){
   # env era
   model <- "ms_env_area_2"
   
-  res <- readRDS(paste0("model_outputs/env/res_counties_", paste0(year_range, collapse = "_"), "_",model,"_", family, "_", region, ".rds"))
+  res <- readRDS(paste0("model_outputs/res_agriregion_genus_filtered", pest, "_",paste0(year_range, collapse = "_"), "_",model,"_", family, "_", region, ".rds"))
   
-  res.summary <- readRDS(paste0("model_outputs/env/res.summary_counties_", paste0(year_range, collapse = "_"), "_",model,"_", family, "_", region, ".rds"))
+  res.summary <- readRDS(paste0("model_outputs/res.summary_agriregion_genus_filtered", pest, "_", paste0(year_range, collapse = "_"), "_",model,"_", family, "_", region, ".rds"))
   
-  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_counties_", paste0(year_range, collapse = "_"),  "_", family, "_", region, ".rds"))
-  
+  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_", paste0(year_range, collapse = "_"),  "_", family, "_", region, ".rds"))
+
   ### assign correct chains ##
   
   sims.mat <- do.call(rbind, res$mcmc)
@@ -44,63 +46,72 @@ create_data_for_plots <- function(region){
   ### to get summaries of the region -- calculate the average between species in a region, then calculate mean across chain -- credible interval for something
   ### also do this for the mu.psi.everything -- second pass for the regional with mean temperature, mean prec
   # 
-  # sp_yr <- expand.grid(yr = 7, sp = 1:nsp)
-  # 
-  # main_occupancy <- lapply(1:nrow(sp_yr), FUN = function(x) get.y.val.all(sims.mat = sims.mat, ss = sp_yr$sp[x], my.data = my.data,
-  #                                                                         yr = sp_yr$yr[x], species_directory = species_directory, region = NA))
-  # 
-  # env_main_occupancy <- rbindlist(main_occupancy)
-  # 
-  # saveRDS(env_main_occupancy, paste0('plots/int_data_plots/env/sp_env_occ_neonic_7_',region,'_occupancy.rds'))
-  # 
-  # 
-  # # get occupancy for every species with nenonic set to zero.
-  # 
-  # main_occupancy_neonic <- lapply(1:nrow(sp_yr), FUN = function(x) get.y.val.all.neonic(sims.mat = sims.mat, ss = sp_yr$sp[x], my.data = my.data,
-  #                                                                         yr = sp_yr$yr[x], species_directory = species_directory, region = NA))
-  # 
-  # env_main_occupancy_neonic <- rbindlist(main_occupancy_neonic)
-  # 
-  # saveRDS(env_main_occupancy_neonic, paste0('plots/int_data_plots/env/sp_env_occ_neonic_0_',region,'_occupancy.rds'))
+  sp_yr <- expand.grid(yr = 7, sp = 1:nsp)
+
+  main_occupancy <- lapply(1:nrow(sp_yr), FUN = function(x) get.y.val.all(sims.mat = sims.mat, ss = sp_yr$sp[x], my.data = my.data,
+                                                                          yr = sp_yr$yr[x], species_directory = species_directory, region = NA))
+
+  env_main_occupancy <- rbindlist(main_occupancy)
+  
+  saveRDS(env_main_occupancy, paste0('plots/int_data_plots/env/sp_env_occ_pest_7_',region,pest,'_occupancy.rds'))
+
+
+  # get occupancy for every species with nenonic set to zero.
+
+  main_occupancy_neonic <- lapply(1:nrow(sp_yr), FUN = function(x) get.y.val.all.neonic(sims.mat = sims.mat, ss = sp_yr$sp[x], my.data = my.data,
+                                                                          yr = sp_yr$yr[x], species_directory = species_directory, region = NA))
+
+  env_main_occupancy_neonic <- rbindlist(main_occupancy_neonic)
+
+  saveRDS(env_main_occupancy_neonic, paste0('plots/int_data_plots/env/sp_env_occ_pest_0_',region,pest,'_occupancy.rds'))
 
   ## bottom vs top 25 % sites 
   
-  sp_yr <- expand.grid(yr = c(1,7), sp = 1:nsp)
-  
-  
-  main_occupancy_neonic <- lapply(1:nrow(sp_yr), FUN = function(x) get.y.val.all.top.bottom(sims.mat = sims.mat, ss = sp_yr$sp[x], my.data = my.data,
-                                                                                        yr = sp_yr$yr[x], species_directory = species_directory, region = NA))
-  
-  env_main_occupancy_neonic <- rbindlist(main_occupancy_neonic)
-  
-  saveRDS(env_main_occupancy_neonic, paste0('plots/int_data_plots/env/sp_env_occ_top_bottom_neonic_',region,'_occupancy.rds'))
-  
+  # sp_yr <- expand.grid(yr = c(1,7), sp = 1:nsp)
+  # 
+  # 
+  # main_occupancy_neonic <- lapply(1:nrow(sp_yr), FUN = function(x) get.y.val.all.top.bottom(sims.mat = sims.mat, ss = sp_yr$sp[x], my.data = my.data,
+  #                                                                                       yr = sp_yr$yr[x], species_directory = species_directory, region = NA))
+  # 
+  # env_main_occupancy_neonic <- rbindlist(main_occupancy_neonic)
+  # 
+  # saveRDS(env_main_occupancy_neonic, paste0('plots/int_data_plots/env/sp_env_occ_top_bottom_neonic_',region,'_occupancy.rds'))
+  # 
   
 }
 
 
-region_v <- c("West", "Center","SouthEast", "NorthEast")
+region_v <- c("South_EastFALSE","CentralFALSE", "Basin_and_RangeFALSE", 
+              "Fruitful_RimFALSE", "Northern_Great_PlainsFALSE", "Northern_CrescentFALSE")
 
-lapply(region_v, create_data_for_plots)
+pest <- "_both"
+pest <- ""
+
+#lapply(region_v, create_data_for_plots, pest = '_both')
+
+lapply(region_v, create_data_for_plots, pest = '')
 
 
 #### calculate the decrease in area due to neonic use ###
 
-region_v <- c("West","Center","NorthEast", "SouthEast")
+year_range <- c(1995, 2015)
+family <- "ALL"
+#pest <- "_both"
+pest <- ""
 
 for(reg in region_v){
   
   ## load data
   
-  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_counties_1995_2015_ALL_", reg,".rds"))
+  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_", paste0(year_range, collapse = "_"),  "_", family, "_", reg, ".rds"))
   
   species_directory <- data.frame(finalName = my.data$sp) %>% 
     mutate(ss = 1:n()) %>% 
     left_join(my.data[[2]])
   
-  env_main_occupancy <- readRDS(paste0('plots/int_data_plots/env/sp_env_occ_neonic_7_',reg,'_occupancy.rds'))
+  env_main_occupancy <- readRDS(paste0('plots/int_data_plots/env/sp_env_occ_pest_7_',reg,pest,'_occupancy.rds'))
   
-  env_main_occupancy_neonic <- readRDS(paste0('plots/int_data_plots/env/sp_env_occ_neonic_0_',reg,'_occupancy.rds'))
+  env_main_occupancy_neonic <- readRDS(paste0('plots/int_data_plots/env/sp_env_occ_pest_0_',reg,pest,'_occupancy.rds'))
   
   area <- readRDS("clean_data/sites/area_counties.RDS") %>% 
     mutate(site = paste0("s_", state_county)) %>% 
@@ -150,7 +161,7 @@ for(reg in region_v){
   }
   
   saveRDS(occ_area, 
-          paste0("plots/area_neonics/int_data/", reg, ".rds"))
+          paste0("plots/area_neonics/int_data",pest,"/", reg, ".rds"))
   
   
 }
@@ -159,56 +170,57 @@ for(reg in region_v){
 
 #### calcualte difference in occupancy between the site with most and least neonic ###
 
-region_v <- c("West","Center","NorthEast", "SouthEast")
+#region_v <- c("West","Center","NorthEast", "SouthEast")
 
-for(reg in region_v){
-  
-  ## load data
-  
-  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_counties_1995_2015_ALL_", reg,".rds"))
-  
-  species_directory <- data.frame(finalName = my.data$sp) %>% 
-    mutate(ss = 1:n()) %>% 
-    left_join(my.data[[2]])
-  
-  env_main_occupancy_neonic <- readRDS(paste0('plots/int_data_plots/env/sp_env_occ_top_bottom_neonic_',reg,'_occupancy.rds'))
-  
-  ## Calculate range area for each species 
-  
-  occ_area <- list()
-  
-  for(sp in 1:max(species_directory$ss)) {
-    
-    ## filter the species
-    sp_name <- species_directory %>% 
-      filter(ss == sp) %>% 
-      select(finalName) %>% unlist()
-    
-    occ_area[[sp]] <- env_main_occupancy_neonic %>% 
-      filter(ss == sp) %>% 
-      select(yr, chains, sites)  %>% 
-      mutate(iter = rep(1:600, 2)) %>% 
-      pivot_wider(names_from = 'yr', values_from = 'chains') %>% 
-      mutate(dif = `7`-`1`) %>% 
-      mutate(species = sp_name)
-    
-  }
-  
-  saveRDS(occ_area, 
-          paste0("plots/area_neonics/int_data/top_bottom", reg, ".rds"))
-  
-  
-}
+# for(reg in region_v){
+#   
+#   ## load data
+#   
+#   my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_trait_agriregion_", paste0(year_range, collapse = "_"),  "_", family, "_", region, ".rds"))
+#   
+#   species_directory <- data.frame(finalName = my.data$sp) %>% 
+#     mutate(ss = 1:n()) %>% 
+#     left_join(my.data[[2]])
+#   
+#   env_main_occupancy_neonic <- readRDS(paste0('plots/int_data_plots/env/sp_env_occ_top_bottom_neonic_',reg,'_occupancy.rds'))
+#   
+#   ## Calculate range area for each species 
+#   
+#   occ_area <- list()
+#   
+#   for(sp in 1:max(species_directory$ss)) {
+#     
+#     ## filter the species
+#     sp_name <- species_directory %>% 
+#       filter(ss == sp) %>% 
+#       select(finalName) %>% unlist()
+#     
+#     occ_area[[sp]] <- env_main_occupancy_neonic %>% 
+#       filter(ss == sp) %>% 
+#       select(yr, chains, sites)  %>% 
+#       mutate(iter = rep(1:600, 2)) %>% 
+#       pivot_wider(names_from = 'yr', values_from = 'chains') %>% 
+#       mutate(dif = `7`-`1`) %>% 
+#       mutate(species = sp_name)
+#     
+#   }
+#   
+#   saveRDS(occ_area, 
+#           paste0("plots/area_neonics/int_data/top_bottom", reg, ".rds"))
+#   
+#   
+# }
 
 
 
 ### change in occupancy 
 
-region_v <- c("West","Center","NorthEast", "SouthEast")
+pest <- "_both"
+pest <- ""
 
 for(reg in region_v){
   
-  all_outputs_neonic <- readRDS(paste0("plots/area_neonics/int_data/", reg, ".rds"))
+  all_outputs_neonic <- readRDS(paste0("plots/area_neonics/int_data",pest,"/", reg, ".rds"))
   
   ## difference in occupancy
   reg_neonic_plot <- all_outputs_neonic %>% 
@@ -232,7 +244,7 @@ for(reg in region_v){
           legend.position = 'none') +
     scale_y_continuous(limits = c(-0.6,0.3))
   
-  ggsave(reg_neonic_plot, filename = paste0("plots/area_neonics/", reg, "diff_occupancy.pdf"))
+  ggsave(reg_neonic_plot, filename = paste0("plots/area_neonics/both/", reg, "diff_occupancy.pdf"))
   
   ## difference in area percent
   reg_neonic_plot_area <- all_outputs_neonic %>% 
@@ -257,7 +269,7 @@ for(reg in region_v){
           legend.position = 'none') 
     scale_y_continuous(limits = c(-15,10))
   
-  ggsave(reg_neonic_plot_area, filename = paste0("plots/area_neonics/", reg, ".pdf"))
+  ggsave(reg_neonic_plot_area, filename = paste0("plots/area_neonics/both/", reg, ".pdf"))
 
   
 }

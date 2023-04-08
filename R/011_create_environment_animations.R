@@ -253,7 +253,7 @@ county_neonic_summed <- counties %>%
 
 ## compare for 1 year
 
-yr <- 2005
+#yr <- 2005
 
 ct_yr_nall <- county_neonic_all %>% 
   filter(YEAR %in% yr)
@@ -329,7 +329,7 @@ for(yr in unique(county_neonic_summed$YEAR)){
   
   neonic_plot <- ggplot() +
     geom_sf(data = ct_yr_nsum, aes(fill = loged_summed_pest), colour = 'black', size = 0.1) +
-    ggtitle(unique(ct_yr_nall$YEAR)) +
+    ggtitle(unique(ct_yr_nsum$YEAR)) +
     theme_cowplot() +
     scale_fill_viridis(name = "Pesticide Use Logged", option = 'viridis', direction = -1) 
   
@@ -337,15 +337,16 @@ for(yr in unique(county_neonic_summed$YEAR)){
   
 }
 
-neonic_plot_all <- ggplot(data = county_neonic_summed) +
+county_neonic_summed_all <- county_neonic_summed %>% st_sf()
+
+neonic_plot_all <- ggplot(data = county_neonic_summed_all) +
   geom_sf(aes(fill = loged_summed_pest), colour = 'black', size = 0.1) +
   theme_cowplot() +
   scale_fill_viridis(name = "Pesticide Use Logged", option = 'viridis', direction = -1)  +
   theme(axis.title=element_blank(),
         axis.text=element_blank(),
         axis.ticks=element_blank(), 
-        axis.line = element_blank())
-
+        axis.line = element_blank()) 
 
 neonic_animation <- neonic_plot_all +
   transition_states(YEAR, transition_length = 2, state_length = 1) +
@@ -385,14 +386,18 @@ yr <- 2013
 ct_yr_nsum <- county_neonic_summed %>% 
   filter(YEAR %in% yr)
 
-region_df <- readRDS("clean_data/sites/site_counties_region.rds")
+region_df <- readRDS("clean_data/sites/site_counties_agriregion.rds")%>% 
+  mutate(region_collapsed = case_when(region %in% c("Southern Seaboard", "Eastern Uplands",
+                                                    "Mississippi Portal") ~ "South East",
+                                      region %in% c("Heartland", "Prairie Gateway") ~ "Central",
+                                      TRUE ~ region))
 
 counties <- readRDS("clean_data/sites/sites_counties.RDS")
 
 counties_region <- counties %>% 
   left_join(region_df) 
 
-counties_split <- split(counties_region, counties_region$region)
+counties_split <- split(counties_region, counties_region$region_collapsed)
 
 regions_combined <- lapply(counties_split, st_union)
 
@@ -404,10 +409,12 @@ neonic_region <- ggplot() +
         axis.text = element_blank(), 
         axis.ticks = element_blank(), 
         axis.line = element_blank()) +
-  geom_sf(data = regions_combined$NorthEast, fill = "transparent", colour = 'black', size = 0.9) +
-  geom_sf(data = regions_combined$SouthEast, fill = "transparent", colour = 'black', size = 0.9) +
-  geom_sf(data = regions_combined$West,fill = "transparent",  colour = 'black', size = 0.9) +
-  geom_sf(data = regions_combined$Center, fill = "transparent", colour = 'black', size = 0.9)
+  geom_sf(data = regions_combined$`Basin and Range`, fill = "transparent", colour = 'black', size = 0.9) +
+  geom_sf(data = regions_combined$Central, fill = "transparent", colour = 'black', size = 0.9) +
+  geom_sf(data = regions_combined$`Fruitful Rim`,fill = "transparent",  colour = 'black', size = 0.9) +
+  geom_sf(data = regions_combined$`Northern Crescent`, fill = "transparent", colour = 'black', size = 0.9) +
+  geom_sf(data = regions_combined$`Northern Great Plains`, fill = "transparent", colour = 'black', size = 0.9) +
+  geom_sf(data = regions_combined$`South East`, fill = "transparent", colour = 'black', size = 0.9)
 
 ggsave(neonic_region, filename = "plots/environment/pesticide/neonic_region_logged.jpeg")
 
@@ -433,16 +440,20 @@ ggsave(neonic_region_split, filename = "plots/environment/pesticide/neonic_regio
 
 ### plot regions
 
-region_df <- readRDS("clean_data/sites/site_counties_region.rds")
+region_df <- readRDS("clean_data/sites/site_counties_agriregion.rds") %>% 
+  mutate(region_collapsed = case_when(region %in% c("Southern Seaboard", "Eastern Uplands",
+                                                    "Mississippi Portal") ~ "South East",
+                                      region %in% c("Heartland", "Prairie Gateway") ~ "Central",
+                                      TRUE ~ region))
 
 counties <- readRDS("clean_data/sites/sites_counties.RDS")
 
 counties_region <- counties %>% 
-  left_join(region_df) %>% 
-  left_join(data.frame(region = unique(region_df$region), region_nice = c("West", "South East", "North East", "Center" )))
+  left_join(region_df) 
+  #left_join(data.frame(region = unique(region_df$region), region_nice = c("West", "South East", "North East", "Center" )))
 
 region_map <- ggplot(data = counties_region) +
-  geom_sf(aes(fill = region_nice), colour = 'black', size = 0.1) +
+  geom_sf(aes(fill = region_collapsed), colour = 'black', size = 0.1) +
   theme_cowplot() +
   scale_fill_discrete(name = "Region")  +
   theme(axis.title=element_blank(),
@@ -454,4 +465,128 @@ region_map <- ggplot(data = counties_region) +
 
 ggsave(region_map, filename = "plots/environment/regions.jpeg")
 ggsave(region_map, filename = "plots/environment/regions.pdf")
+
+
+
+
+
+#### agriregions - species presence 
+
+
+
+region_df <- readRDS("clean_data/sites/site_counties_agriregion.rds")
+
+counties <- readRDS("clean_data/sites/sites_counties.RDS")
+
+regions <- str_replace_all(unique(region_df$region), " ", "_")
+
+sites_modelled <- list()
+
+for(r in regions){
+  
+  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_agriregion_1995_2015_ALL_",r,"FALSE.rds"))
+  
+  sites_modelled[[r]] <- data.frame(state_county = str_remove(my.data$site, "s_"), 
+                                    modelled = 1, 
+                                    region = str_replace_all(r, "_", " "))
+  
+}
+
+all_sites_modelled <- sites_modelled %>% 
+  map_df(~as.data.frame(.x))
+
+
+ct_yr_nsum_model <- ct_yr_nsum %>% 
+  left_join(all_sites_modelled) %>% 
+  mutate(log_summ_modelled = loged_summed_pest*modelled)
+
+counties_region <- counties %>% 
+  left_join(region_df) 
+
+counties_split <- split(counties_region, counties_region$region)
+
+regions_combined <- lapply(counties_split, st_union)
+
+neonic_region <- ggplot() +
+  geom_sf(data = ct_yr_nsum_model, aes(fill = log_summ_modelled), colour = 'grey', size = 0.1) +
+  theme_cowplot() +
+  scale_fill_viridis(name = "Pesticide Use 2013 \n (log scale)", option = 'viridis', direction = -1) +
+  theme(legend.position = "bottom", 
+        axis.text = element_blank(), 
+        axis.ticks = element_blank(), 
+        axis.line = element_blank()) +
+  geom_sf(data = regions_combined$`Basin and Range`, fill = "transparent", colour = 'black', size = 1) +
+  geom_sf(data = regions_combined$`Eastern Uplands`, fill = "transparent", colour = 'black', size = 1) +
+  geom_sf(data = regions_combined$`Fruitful Rim`,fill = "transparent",  colour = 'black', size = 1) +
+  geom_sf(data = regions_combined$Heartland, fill = "transparent", colour = 'black', size = 1) +
+  geom_sf(data = regions_combined$`Mississippi Portal`,fill = "transparent",  colour = 'black', size = 1) +
+  geom_sf(data = regions_combined$`Northern Crescent`,fill = "transparent",  colour = 'black', size = 1) +
+  geom_sf(data = regions_combined$`Northern Great Plains`,fill = "transparent",  colour = 'black', size = 1) +
+  geom_sf(data = regions_combined$`Prairie Gateway`,fill = "transparent",  colour = 'black', size = 1) +
+  geom_sf(data = regions_combined$`Southern Seaboard`,fill = "transparent",  colour = 'black', size = 1) 
+  
+ggsave(neonic_region, filename = "plots/environment/pesticide/neonic_agriregion_logged.jpeg")
+
+
+
+
+### other plot of regions###
+
+regions <- unique(ct_yr_nsum_model$region)
+
+for(r in regions){
+  
+  ct_yr_nsum_model_regional <- ct_yr_nsum_model %>% 
+    mutate(log_summ_modelled = ifelse(!region %in% r, NA, log_summ_modelled))
+  
+  neonic_region <- ggplot() +
+    geom_sf(data = ct_yr_nsum_model_regional, aes(fill = log_summ_modelled), colour = 'grey', size = 0.1) +
+    theme_cowplot() +
+    scale_fill_viridis(name = "Pesticide Use 2013 \n (log scale)", option = 'viridis', direction = -1) +
+    theme(legend.position = "bottom", 
+          axis.text = element_blank(), 
+          axis.ticks = element_blank(), 
+          axis.line = element_blank()) +
+    geom_sf(data = regions_combined[[r]],fill = "transparent",  colour = 'black', size = 2) +
+    ggtitle(r)
+  
+  ggsave(neonic_region, filename = paste0("plots/environment/pesticide/neonic_agriregion_logged_",str_replace(r, " ", "_"),".jpeg"))
+}
+
+
+###### blacked out regions ####
+
+region_df <- readRDS("clean_data/sites/site_counties_agriregion.rds") %>% 
+  mutate(region_collapsed = case_when(region %in% c("Southern Seaboard", "Eastern Uplands",
+                                                    "Mississippi Portal") ~ "South East",
+                                      region %in% c("Heartland", "Prairie Gateway") ~ "Central",
+                                      TRUE ~ region))
+
+counties <- readRDS("clean_data/sites/sites_counties.RDS")
+
+regions <- unique(region_df$region_collapsed)
+
+county_region <- counties %>% 
+  left_join(region_df)
+
+US_all <- county_region %>% 
+  st_union()
+
+for(r in regions){
+  
+  region_only <- county_region %>% 
+    filter(region_collapsed %in% r) %>% 
+    st_union()
+
+ region_outline <- ggplot() +
+    geom_sf(data = US_all, fill = 'white') +
+    geom_sf(data = region_only, fill = 'black') +
+    theme_cowplot()  + 
+    theme(legend.position = "bottom", 
+          axis.text = element_blank(), 
+          axis.ticks = element_blank(), 
+          axis.line = element_blank()) 
+  
+  ggsave(region_outline, filename = paste0("plots/environment/regions_outline/region_",str_replace(r, " ", "_"),".jpeg"))
+}
 
