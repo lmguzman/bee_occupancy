@@ -474,17 +474,38 @@ ggsave(region_map, filename = "plots/environment/regions.pdf")
 
 
 
-region_df <- readRDS("clean_data/sites/site_counties_agriregion.rds")
+region_df <- readRDS("clean_data/sites/site_counties_agriregion.rds") %>% 
+  mutate(region_collapsed = case_when(region %in% c("Southern Seaboard", "Eastern Uplands",
+                                                    "Mississippi Portal") ~ "South East",
+                                      region %in% c("Heartland", "Prairie Gateway") ~ "Central",
+                                      TRUE ~ region))
 
 counties <- readRDS("clean_data/sites/sites_counties.RDS")
 
-regions <- str_replace_all(unique(region_df$region), " ", "_")
+regions <- str_replace_all(unique(region_df$region_collapsed), " ", "_")
 
 sites_modelled <- list()
+
+
+
+all_region_modelled <- 
+  counties %>% 
+  left_join(data.frame(state_county = str_remove(my.data$site, "s_"), 
+                       modelled = 1, 
+                       region = str_replace_all(r, "_", " "))) %>% 
+  left_join(region_df)
+  
+
+ggplot() +
+  geom_sf(data = all_region_modelled, aes(fill = modelled))
+
+### 
 
 for(r in regions){
   
   my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_agriregion_1995_2015_ALL_",r,"FALSE.rds"))
+  
+  my.data <-readRDS("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_1995_2015_ALL_CentralFALSE.rds")
   
   sites_modelled[[r]] <- data.frame(state_county = str_remove(my.data$site, "s_"), 
                                     modelled = 1, 
@@ -589,4 +610,54 @@ for(r in regions){
   
   ggsave(region_outline, filename = paste0("plots/environment/regions_outline/region_",str_replace(r, " ", "_"),".jpeg"))
 }
+
+
+
+##### Fraction of animal pollinated agriculture for the counties that were modelled####
+
+files_results <- list.files("clean_data/data_prepared/", full.names = TRUE)
+
+fan_ag_files <- files_results[str_detect(files_results, "my_data_env_genus_filtered_trait_agriregion_both_pest_area")]
+
+agriculture_all <- list()
+
+frac_an_pol_all <- list()
+
+
+for(f in fan_ag_files){
+  
+  my.data <- readRDS(f)
+  
+  region <- str_extract(f, "ALL\\_\\S+\\FALSE")
+  
+  agriculture_all[[region]] <- my.data[[1]]$agriculture[,"yr2007"]
+  
+  frac_an_pol_all[[region]] <- my.data[[1]]$fracanimal
+  
+}
+
+agriculture_all_df <- agriculture_all %>% 
+  map_df(~as.data.frame(.x), .id = 'region') %>% 
+  tibble::rownames_to_column('site') %>% 
+  rename(percent_county_agriculture = .x) %>% 
+  mutate(region = str_remove_all(region, "ALL_|FALSE"))
+
+
+frac_an_pol_all_df <- frac_an_pol_all %>% 
+  map_df(~as.data.frame(.x), .id = 'region') %>% 
+  tibble::rownames_to_column('site') %>% 
+  rename(percent_agriculture_animal_pol = .x) %>% 
+  mutate(region = str_remove_all(region, "ALL_|FALSE"))
+
+
+agriculture_all_df %>% 
+  ggplot(aes(x = region, y = percent_county_agriculture)) +
+  geom_boxplot() +
+  theme_cowplot()
+
+
+frac_an_pol_all_df %>% 
+  ggplot(aes(x = region, y = percent_agriculture_animal_pol)) +
+  geom_boxplot() +
+  theme_cowplot()
 

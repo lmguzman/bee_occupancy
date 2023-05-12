@@ -6,6 +6,7 @@ library(cowplot)
 library(stringr)
 library(viridis)
 library(tidyr)
+library(broom)
 
 ####### create plot based on matrix we put into the model ####
 
@@ -236,35 +237,66 @@ correlations_df %>%
 
 environmental_data <- readRDS(paste0("clean_data/data_prepared/environment_counties_1995_2015.rds"))
 
+region_df <- readRDS("clean_data/sites/site_counties_agriregion.rds") %>% 
+  mutate(region_collapsed = case_when(region %in% c("Southern Seaboard", "Eastern Uplands",
+                                                    "Mississippi Portal") ~ "South East",
+                                      region %in% c("Heartland", "Prairie Gateway") ~ "Central",
+                                      TRUE ~ region)) %>%
+  mutate(site = paste0("s_", state_county))
+
 
 
 both_df <- environmental_data$both_mat %>% 
   data.frame() %>% 
   tibble::rownames_to_column("site") %>% 
-  pivot_longer(names_to = 'year', values_to = 'neonic', -site)
+  pivot_longer(names_to = 'year', values_to = 'both', -site)
 
 ag_df <- environmental_data$ag_mat %>% 
   data.frame() %>% 
   tibble::rownames_to_column("site") %>% 
-  pivot_longer(names_to = 'year', values_to = 'pyr', -site)
+  pivot_longer(names_to = 'year', values_to = 'ag', -site)
 
 both_ag <- both_df %>% 
-  left_join(ag_df) 
+  left_join(ag_df) %>%
+  left_join(region_df)
 
 correlations_df <- list()
 
 for(yr in sort(unique(both_ag$year))){
   
-  neonic_pyr_yr <- neonic_pyr %>% 
+  both_ag_yr <- both_ag %>% 
     filter(year == yr)
   
-  cor_tested <- cor.test(neonic_pyr_yr$neonic, neonic_pyr_yr$pyr)
+  cor_tested <- cor.test(both_ag_yr$both, both_ag_yr$ag)
   
-  correlations_df[[yr]] <- data.frame(yr = yr, cor.val = cor_tested$estimate, p_val = cor_tested$p.value)
+  region_correlation <- split(both_ag_yr, both_ag_yr$region_collapsed) %>%
+    map(~cor.test(.x$both, .x$ag)) %>%
+    map(~tidy(.x)) %>%
+    map_df(~as.data.frame(.x), .id = "region_collapsed") %>%
+    mutate(year = yr)
+
+  correlations_df[[yr]] <- tidy(cor_tested) %>%  
+  mutate(year = yr) %>%
+  mutate(region_collapsed = "All") %>%
+  bind_rows(region_correlation) 
   
 }
 ## correlation between pyrethoids and neonics ##
 correlations_df %>% 
-  map_df(~as.data.frame(.x)) %>% 
-  mutate(significant = ifelse(p_val < 0.05, TRUE, FALSE)) %>% 
-  arrange(cor.val)
+  map_df(~as.data.frame(.x)) %>%
+  group_by(region_collapsed) %>%
+  summarise(mean(estimate), max(estimate), min(estimate))
+
+correlations_df %>% 
+  map_df(~as.data.frame(.x)) %>%
+  ggplot(aes(x = year, y = estimate, colour = region_collapsed)) +
+  geom_point() +
+  facet_wrap(~region_collapsed) +
+  theme_cowplot() 
+
+
+#### check diversity of crops in each region using the crop data layer ####
+
+## read in crop data layer
+
+#
