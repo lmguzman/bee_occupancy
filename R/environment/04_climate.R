@@ -1,3 +1,5 @@
+### script to extract climate data from CHELSA 
+
 library(stringr)
 library(dplyr)
 library(parallel)
@@ -33,7 +35,6 @@ for(f in 1:length(files_all)){
 }
 
 
-
 ####### assign sites  ######
 
 extract_values_site <- function(i){
@@ -57,7 +58,6 @@ extract_values_site <- function(i){
   return(bio01_1_year)
 }
 
-## new
 
 ## load sites 
 sites <- readRDS("clean_data/sites/sites_counties.RDS")

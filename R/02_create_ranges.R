@@ -7,6 +7,8 @@ library(sf)
 library(lubridate)
 library(stringr)
 
+## step 1: filter down data 
+
 ## load data observation data 
 
 all_obs <- fread("raw_data/data/cleaned_contiguousUS_records.csv")
@@ -41,8 +43,6 @@ lat_lon <- all_small2 %>%
   crs = 4269,
   stringsAsFactors = FALSE,
   remove = FALSE) 
-# %>% 
-#   st_transform(4269)
 
 # get county for each observation
 
@@ -66,8 +66,6 @@ all_bees_geometry <- all_bees %>%
 
 
 ## remove Agapostemon angelicus as it is hard to identify from A. texanus
-## remove lassioglosum in the west
-## infer absences of Colletes Larreae -- which are the other species that are specialist to other Larreae specialist
 
 all_bees_geometry_final <- all_bees_geometry %>% 
   filter(finalName != "Agapostemon angelicus")
@@ -89,8 +87,8 @@ saveRDS(bee_data, file = paste0("clean_data/observations/observations_counties.r
 saveRDS(all_bees_geometry, file = paste0("clean_data/observations/observations_counties_geometry.rds"))
 
 
-##### make ranges
-  
+## step 2: make ranges 
+
   ## load observations
   
   all_obs <- readRDS(paste0("clean_data/observations/observations_counties_geometry.rds"))
@@ -109,15 +107,20 @@ saveRDS(all_bees_geometry, file = paste0("clean_data/observations/observations_c
   range_list <- list()
   
   for(species in all_sp){
-    ## get unique lat lon for the species
+    
+    ## get unique lat lon for each species
     
     sel_sepecies <- all_obs %>% 
       filter(finalName == species)
+    
+    ## make convex hull
   
     convex_hull <- sel_sepecies %>% 
       st_geometry() %>% 
       st_union() %>% 
       st_convex_hull() 
+    
+    ## get sites in range
     
     tryCatch(
       expr = {

@@ -1,16 +1,20 @@
+### script to extract the agriculture data from the NLCD data set 
+
 library(sf)
 library(dplyr)
 library(raster)
 library(exactextractr)
 library(data.table)
 
-### New 
+### load sites  
 
 sites <- readRDS("clean_data/sites/sites_counties.RDS")
 
 agriculture_all <- list()
 
 count <- 1
+
+## loop for every year of data 
 
 for(year in c(2001, 2004, 2006, 2008, 2011, 2013, 2016)){
  

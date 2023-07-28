@@ -1,3 +1,5 @@
+## script to extract crop type from the crop data layer
+
 library(sf)
 library(dplyr)
 library(raster)
@@ -7,18 +9,16 @@ library(ggplot2)
 library(purrr)
 library(tidyr)
 
-sites <- readRDS("clean_data/sites/sites_counties.RDS")
+## load sites 
 
-area <- readRDS("clean_data/sites/area_counties.RDS")
+sites <- readRDS("clean_data/sites/sites_counties.RDS")
 
 year <- 2008
   
 ## load crop data
 crop_cover <- raster(paste0('raw_data/crops/', year, '_30m_cdls/',year,'_30m_cdls.tif'))
   
-plot(crop_cover)
-
-## extract all of the crop types in the each county
+## extract all of the crop types in the each county and save per county
 
 for(i in 1:nrow(sites)){
   crop_cover_site <- extract(crop_cover, sites[i,])
@@ -41,20 +41,19 @@ for(crop_file in county_crop){
  print(counter)
 }
 
-
 agriculture_all_year <-rbindlist(all_crop_cover)
 
 saveRDS(agriculture_all_year, 'clean_data/agriculture/crops_county.rds')
  
- ### add categorization codes
+######### process data by adding category types ####
+
+## re-load compiled agricultural data
 
 agriculture_all_year <- readRDS('clean_data/agriculture/crops_county.rds')
 
-## load the match between pollinator attractiveness and land use
+## load and clean the pollinator attractiveness data from the USDA
 
 pol_attc_land_use <- read.csv("raw_data/crops/pollinator_attractiveness 2.csv")
-
-### load and clean pollinator attractiveness data 
 
 pol_attractiveness <- read.csv("raw_data/crops/Copy of pollinator_attractiveness.csv") %>% 
   dplyr::select(-c(X.1, X.6, X.8, X.11, X.12, X.14, X.15, X.18:X.27)) %>% 
@@ -70,25 +69,21 @@ pol_attractiveness <- read.csv("raw_data/crops/Copy of pollinator_attractiveness
   mutate(Uses.Managed.Pollinators = ifelse(X.17 != "", X.17, Uses.Managed.Pollinators)) %>% 
   dplyr::select(-c(X.13:X.17)) 
 
+## get crops that do not use managed bees
+
 Crops_not_using_managed_bees <- pol_attractiveness %>% 
   left_join(pol_attc_land_use) %>% 
   filter(Uses.Managed.Pollinators == 'No') %>% 
   dplyr::select(Crop, Land_Cover)
 
-Crops_not_requiring_pollination <- pol_attractiveness %>% 
-  left_join(pol_attc_land_use) %>% 
-  filter(Requires.Bee.Pollination == 'No') %>% 
-  dplyr::select(Crop, Land_Cover)
-
-Crops_not_attractive_all <- pol_attractiveness %>% 
-  left_join(pol_attc_land_use) %>% 
-  filter(HB.Poll.1 == '-' & HB.Nec.1 == '-' & Bumble.Bees == "-" & Solitary.Bees == '-') %>% 
-  dplyr::select(Crop, Land_Cover)
+## get crops not attractive to bumbles and solitary
 
 Crops_not_attractive_bb_sol <- pol_attractiveness %>% 
   left_join(pol_attc_land_use) %>% 
   filter(Bumble.Bees == "-" | Solitary.Bees == '-') %>% 
   dplyr::select(Crop, Land_Cover)
+
+## assign crop numbers to category names and join with the attractiveness
 
 crop_categories <- read.csv("raw_data/crops/Categorization_Code_Land_Cover.txt") %>%
   mutate(Categorization_Code = as.numeric(Categorization_Code)) %>% 
@@ -124,6 +119,8 @@ crop_categories <- read.csv("raw_data/crops/Categorization_Code_Land_Cover.txt")
                                                              "Dbl Crop Soybeans/Oats", "Dbl Crop Barley/Soybeans"), "HALF", crops_not_attractive_bb_sol))
   
   
+
+## join with the county land cover
 
 region_agriculture_all <- agriculture_all_year %>%
   mutate(crop_cover_site = as.numeric(as.character(crop_cover_site))) %>%

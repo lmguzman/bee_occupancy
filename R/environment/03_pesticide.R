@@ -1,3 +1,5 @@
+#### script to extract pesticide data from the USGS pesticide use program
+
 library(dplyr)
 library(data.table)
 library(sf)
@@ -5,10 +7,7 @@ library(stringr)
 library(tidyr)
 library(stringr)
 
-##### new ####
-
 ## download county level pesticide data from https://water.usgs.gov/nawqa/pnsp/usage/maps/county-level/
-
 
 input_dir <- "/Volumes/Rasters/USC/bee_occupancy/raw_data/pesticide/pesticide_US/"
 files_dir <- list.files(input_dir)
@@ -54,9 +53,10 @@ ld50_dermal <- ld50 %>%
   dplyr::select(COMPOUND, mean_ld50)
 
 ## load pesticide data
+
 neonics_all <- readRDS("clean_data/pesticide/neonics_county.rds")
 
-  ## neonics
+  ### join pesticide data with county and LD 50
   
   neonic_all_arranged <- neonics_all %>% 
     mutate(STATEFP = str_pad(STATE_FIPS_CODE, 2, "left", 0), 
@@ -73,23 +73,16 @@ neonics_all <- readRDS("clean_data/pesticide/neonics_county.rds")
   
   saveRDS(neonic_ld50, file = paste0("clean_data/pesticide/neonics_US_county.rds"))
   
-
-  
-  
-  
-  
   
   #####  pyrethroids  ####
   
   ## download county level pesticide data from https://water.usgs.gov/nawqa/pnsp/usage/maps/county-level/
   
-  
+
   input_dir <- "/Volumes/Rasters/USC/bee_occupancy/raw_data/pesticide/pesticide_US/"
   files_dir <- list.files(input_dir)
   
   ld50 <- read.csv("clean_data/pesticide/apis_ld50_mean_pyrethoid.csv")
-  
-  
   
   ## create list of pesticides of interest -- compound names from above website
   
@@ -133,7 +126,7 @@ neonics_all <- readRDS("clean_data/pesticide/neonics_county.rds")
   ## load pesticide data
   pyr_all <- readRDS("clean_data/pesticide/pyr_county.rds")
   
-  ## pyr
+  ### join pesticide data with county and LD 50
   
   pyr_all_arranged <- pyr_all %>% 
     mutate(STATEFP = str_pad(STATE_FIPS_CODE, 2, "left", 0), 
