@@ -233,10 +233,62 @@ counties_shp %>%
 
 ######### USDA Quick Stats -- not sure if this is good! lots of missing data #########
 
-inventory <- read.csv("raw_data/honey_bees/CC06DEB4-F568-3018-8353-B393282830EC.csv", na.strings = '(D)') %>% 
-  mutate(`CV....` = ifelse(`CV....` %in% c("", "(L)", "(H)"), NA, `CV....`)) %>% 
+inventory <- read.csv("raw_data/honey_bees/CC06DEB4-F568-3018-8353-B393282830EC.csv", na.strings = '(D)') %>%
+  mutate(`CV....` = ifelse(`CV....` %in% c("", "(L)", "(H)"), NA, `CV....`)) %>%
   mutate(`CV....` = as.numeric(`CV....`))
 inventory_other <- read.csv("raw_data/honey_bees/D43100D6-CB1C-3C2B-B1FE-6C5BD6CDBDC3.csv", na.strings = "(D)")
+
+
+inventory <- read.csv("raw_data/honey_bees/USDA_CENSUS_OTHER/1CB32B5E-9911-3C0C-B5C3-FF5EDF06E363.csv", na.strings = ' (D)') %>% 
+  filter(Data.Item == "HONEY, BEE COLONIES - INVENTORY, MEASURED IN COLONIES") %>% 
+    mutate(`CV....` = ifelse(`CV....` %in% c("", "(L)", "(H)"), NA, `CV....`)) %>%
+    mutate(`CV....` = as.numeric(`CV....`)) %>% 
+  mutate(Value = as.numeric(str_remove(Value, ","))) %>% 
+  filter(!is.na(County.ANSI)) %>% 
+  mutate(state_county = paste0(str_pad(State.ANSI, 2, "left", "0"), "_", str_pad(County.ANSI, 3, "left", "0"))) %>% 
+  select(Year, state_county, Value) %>% 
+  mutate(Value = ifelse(is.na(Value), 0, Value))
+
+saveRDS(inventory, "clean_data/honey_bees/colonies_time.rds")
+
+operations <- read.csv("raw_data/honey_bees/USDA_CENSUS_OTHER/1CB32B5E-9911-3C0C-B5C3-FF5EDF06E363.csv", na.strings = ' (D)') %>% 
+  filter(Data.Item == "HONEY, BEE COLONIES - OPERATIONS WITH INVENTORY") %>% 
+  mutate(`CV....` = ifelse(`CV....` %in% c("", "(L)", "(H)"), NA, `CV....`)) %>%
+  mutate(`CV....` = as.numeric(`CV....`)) %>% 
+  mutate(Value = as.numeric(str_remove(Value, ","))) %>% 
+  mutate(state_county = paste0(str_pad(State.ANSI, 2, "left", "0"), "_", str_pad(County.ANSI, 3, "left", "0")))
+
+
+## look at missing data in inventory vs operations 
+
+
+inventory
+
+counties_shp %>% 
+  left_join(inventory) %>% 
+  ggplot() + geom_sf(aes(fill = log(Value))) +
+  scale_fill_viridis() +
+  facet_wrap(~Year)
+
+
+operations %>% 
+  left_join(region_df) %>% filter(!is.na(region_collapsed)) %>% 
+  group_by(region_collapsed, Year) %>% 
+  summarize(mean = mean(Value, na.rm = TRUE), sd = sd(Value, na.rm = TRUE), sum = sum(Value, na.rm = TRUE))  %>% 
+  arrange(desc(sum)) %>% 
+  ggplot(aes(x = Year, y = sum, colour = region_collapsed)) +
+  geom_line() +
+  scale_y_log10()
+  
+
+inventory %>% 
+  left_join(region_df) %>% filter(!is.na(region_collapsed)) %>% 
+  group_by(region_collapsed, Year) %>% 
+  summarize(mean = mean(Value, na.rm = TRUE), sd = sd(Value, na.rm = TRUE), sum = sum(Value, na.rm = TRUE))  %>% 
+  arrange(desc(sum)) %>% 
+  ggplot(aes(x = Year, y = sum, colour = region_collapsed)) +
+  geom_line() +
+  scale_y_log10()
 
 inventory_clean <- inventory %>% bind_rows(inventory_other) %>% 
   dplyr::select(Year, State, State.ANSI, County, County.ANSI, Value, `CV....`) %>% 
@@ -246,25 +298,12 @@ inventory_clean <- inventory %>% bind_rows(inventory_other) %>%
   mutate(state_county = paste0(str_pad(State.ANSI, 2, "left", "0"), "_", str_pad(County.ANSI, 3, "left", "0"))) %>% 
   filter(Year == 2012)
 
-counties_shp %>% 
-  left_join(inventory_clean) %>% 
-  ggplot() + geom_sf(aes(fill = log(Value))) +
-  scale_fill_viridis()
-
 inventory_clean %>% 
   left_join(region_df) %>% filter(!is.na(region_collapsed)) %>% 
   ggplot(aes(x = region_collapsed, y = Value)) + 
   geom_violin() +
   geom_jitter() +
   scale_y_log10()
-
-inventory_clean %>% 
-  left_join(region_df) %>% filter(!is.na(region_collapsed)) %>% 
-  group_by(region_collapsed) %>% 
-  summarize(mean = mean(Value, na.rm = TRUE), sd = sd(Value, na.rm = TRUE), sum = sum(Value, na.rm = TRUE))  %>% 
-  arrange(desc(sum))
-  
-
 ## try 1
 
 ##### give each county the same value##

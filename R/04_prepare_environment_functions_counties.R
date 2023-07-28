@@ -34,26 +34,28 @@ prepare_environmental_data <- function(scaling,year_range){
   
   ag_mat <- prepare_agriculture(scaling = scale)
   
-  ## prepare fraction of animal pollinated in ag land
-  
-  fan_mat <- prepare_fraction_animal(scaling = scale)
-  
   ## prepare fraction of animal pollinated in county 
   
-  county_fan_mat <- prepare_county_animal(scaling = scale)
+  # original non-animal pollinated
+  county_fan_mat <- prepare_county_animal(type_filter = "non_animal_pollinated_orig")
+  
+  #one extreme does not use managed bees
+  
+  county_fan_mat_mb <- prepare_county_animal(type_filter = "crops_do_not_use_managed_bees")
+  
+  #other extreme, not attractive to bbees and sol bees
+  
+  county_fan_mat_abs <- prepare_county_animal(type_filter = "crops_not_attractive_bb_sol")
   
   ## prepare honey bees 
   
-  simple_col_mat <- prepare_honey_bees(scaling = scale, type = "simple")
-  
-  canag_col_mat <- prepare_honey_bees(scaling = scale, type = "canag")
-  
+  time_col_mat <- prepare_honey_bees_time(scaling = scale, type = "canag")
   
   ## get the sites present in all of the matrices
   
   site_id <- sort(Reduce(intersect, list(rownames(tmax_mat), rownames(neonic_mat), rownames(ag_mat), rownames(simple_col_mat), rownames(county_fan_mat))))
   
-  final_year <- paste0("yr", year_range[1]:year_range[2])
+  final_year <- paste0("yr", year_range[1]:year_range[2])[seq(1,21, 3)]
   
   environment_prepared <- list(tmax_mat = tmax_mat[site_id,final_year],
                                prec_mat = prec_mat[site_id,final_year],
@@ -64,10 +66,10 @@ prepare_environmental_data <- function(scaling,year_range){
                                neonic_mat_area = neonic_mat_area[site_id, final_year],
                                pyr_mat_area = pyr_mat_area[site_id, final_year],
                                both_mat_area = both_mat_area[site_id, final_year],
-                               fan_mat = fan_mat[site_id,],
                                county_fan_mat = county_fan_mat[site_id,],
-                               simple_col_mat = simple_col_mat[site_id,],
-                               canag_col_mat = canag_col_mat[site_id,],
+                               county_fan_mat_mb = county_fan_mat_mb[site_id,],
+                               county_fan_mat_abs = county_fan_mat_abs[site_id,],
+                               time_col_mat = time_col_mat[site_id, final_year], 
                                site_id = site_id)
   
   saveRDS(environment_prepared, file = paste0("clean_data/data_prepared/environment_counties_", paste0(year_range, collapse = '_'), ".rds"))
@@ -176,14 +178,17 @@ prepare_pesticide <- function(year_range, pesticide, area){
   ## fill in gaps for sites where no pesticide use detected 
   
   year_site <- expand.grid(YEAR = year_range[1]:year_range[2], state_county = all_us_sites$state_county,
-                           COMPOUND = unique(pesticide_raw$COMPOUND)) %>% 
+                           COMPOUND = unique(pesticide_raw$COMPOUND)) %>%  
     data.table()
   
   setkeyv(year_site, c("YEAR", "state_county", "COMPOUND"))
   setkeyv(pesticide_raw,  c("YEAR", "state_county", "COMPOUND"))
   
+  yr_average <- data.frame(YEAR = year_range[1]:year_range[2], yr_avr = rep(1:7, each = 3))
+  
   pesticide_all_sites <- year_site %>% 
     left_join(pesticide_raw) %>% 
+    left_join(yr_average) %>% 
     mutate(pest_site_ld50_use = ifelse(is.na(pest_site_ld50), 0, pest_site_ld50)) %>% 
     #mutate(site = paste0("s", str_pad(str_remove(site,"s"), width = 3, pad = "0", side = 'left'))) %>% 
     mutate(site = paste0("s_", state_county)) %>%
@@ -198,7 +203,15 @@ prepare_pesticide <- function(year_range, pesticide, area){
   
   ### create a matrix 
   
-  pest_summed <- pesticide_all_sites[,.(summed_pesticides = sum(pest_site_ld50_use)), by = .(site, year)]
+  averaged_by_year_site_compound <- pesticide_all_sites[,.(av_pesticides = mean(pest_site_ld50_use)), by = .(site, yr_avr, COMPOUND)] %>% 
+    left_join(yr_average %>% 
+                group_by(yr_avr) %>% 
+                slice(1)) %>%
+    mutate(year = paste0('yr', YEAR))  
+  
+  #pest_summed <- pesticide_all_sites[,.(summed_pesticides = sum(pest_site_ld50_use)), by = .(site, year)]
+  
+  pest_summed <- averaged_by_year_site_compound[,.(summed_pesticides = sum(av_pesticides)), by = .(site, year)]
   
   min_g_0 <- min(pest_summed$summed_pesticides[pest_summed$summed_pesticides>0])
   
@@ -213,8 +226,6 @@ prepare_pesticide <- function(year_range, pesticide, area){
   
   return(pest_all_scaled)
 }
-
-
 
 ##### agriculture #####
 
@@ -232,57 +243,27 @@ prepare_agriculture <- function(scaling, ...){
     year_site <- expand.grid(new_year = paste0('yr', 1995:2016), state_county = all_us_sites$state_county)
     
   
-    agriculture_mat <- agriculture %>% 
+    agriculture_df <- agriculture %>% 
       ### interpolates the same data to every intermediate year based on ag year
       left_join(ag_year) %>% 
       dplyr::select(new_year, state_county, percent_agriculture) %>% 
       full_join(year_site) %>% 
       mutate(site = paste0("s_", state_county)) %>%
-      dplyr::select(-state_county) %>% 
-      tidyr::pivot_wider(names_from= 'new_year', values_from = 'percent_agriculture') %>% 
-      tibble::column_to_rownames("site") %>% 
-      as.matrix()
+      dplyr::select(-state_county)  
     
-    return(agriculture_mat)
-  
-}
-
-
-
-##### Fraction animal pollinates #####
-
-prepare_fraction_animal <- function(scaling, ...){
-  
-  crop_county_animal <- readRDS(paste0("clean_data/agriculture/crops_county_animal.rds"))
-  
-  all_us_sites <- readRDS(paste0("clean_data/sites/sites_counties.rds"))
-  
-  all_site <- expand.grid(site = paste0("s_", all_us_sites$state_county))
-  
-  
-  Total_agricultural_area <- crop_county_animal %>% 
-    filter(cover_type == 'Crop') %>% 
-    group_by(site) %>% 
-    summarise(total_ag_area = sum(Freq))
-  
-  Total_animal_pollinated <- crop_county_animal %>% 
-    filter(cover_type == 'Crop') %>% 
-    filter(non_animal_pollinated %in% c("FALSE", "HALF")) %>% 
-    group_by(site) %>% 
-    summarise(total_ani_pollinated = sum(Freq))
-  
-  frac_animal_pollinated_all <- Total_agricultural_area %>% 
-    left_join(Total_animal_pollinated) %>% 
-    mutate(frac_animal_pol = total_ani_pollinated/total_ag_area)
-  
-  frac_animal_mat <- frac_animal_pollinated_all %>% 
-    dplyr::select(site, frac_animal_pol) %>% 
-    full_join(all_site) %>%
-    mutate(frac_animal_pol = ifelse(is.na(frac_animal_pol), 0, frac_animal_pol)) %>% 
-    tibble::column_to_rownames("site") %>% 
-    as.matrix()
-  
-  return(frac_animal_mat)
+    min_ag <- min(agriculture_df$percent_agriculture[agriculture_df$percent_agriculture > 0])
+    
+    ag_mat <- agriculture_df %>% 
+      mutate(ag_log = log(percent_agriculture + (min_ag/2))) %>% 
+      dplyr::select(-percent_agriculture) %>% 
+      tidyr::pivot_wider(names_from= 'new_year', values_from = 'ag_log') %>% 
+      tibble::column_to_rownames("site") %>% 
+      as.matrix() 
+    
+      ag_mat_scaled <- (ag_mat- mean(ag_mat, na.rm = TRUE))/sd(ag_mat, na.rm = TRUE)
+    
+    
+    return(ag_mat_scaled)
   
 }
 
@@ -290,7 +271,7 @@ prepare_fraction_animal <- function(scaling, ...){
 
 ##### Crop animal pollinates #####
 
-prepare_county_animal <- function(scaling, ...){
+prepare_county_animal <- function(type_filter){
   
   crop_county_animal <- readRDS(paste0("clean_data/agriculture/crops_county_animal.rds"))
   
@@ -298,16 +279,39 @@ prepare_county_animal <- function(scaling, ...){
   
   all_site <- expand.grid(site = paste0("s_", all_us_sites$state_county))
   
+  ## total county area
   
   Total_county_area <- crop_county_animal %>% 
     group_by(site) %>% 
     summarise(total_area = sum(Freq))
   
-  Total_animal_pollinated <- crop_county_animal %>% 
-    filter(cover_type == 'Crop') %>% 
-    filter(non_animal_pollinated %in% c("FALSE", "HALF")) %>% 
-    group_by(site) %>% 
-    summarise(total_ani_pollinated = sum(Freq))
+  ## area that is not animal pollinated
+  
+  if(type_filter == "non_animal_pollinated_orig"){
+    
+    Total_animal_pollinated <- crop_county_animal %>% 
+      filter(cover_type == 'Crop') %>% 
+      filter(non_animal_pollinated_orig %in% c("FALSE", "HALF")) %>% 
+      group_by(site) %>% 
+      summarise(total_ani_pollinated = sum(Freq))
+    
+  }else if(type_filter == "crops_do_not_use_managed_bees"){
+    
+    Total_animal_pollinated <- crop_county_animal %>% 
+      filter(cover_type == 'Crop') %>% 
+      filter(crops_do_not_use_managed_bees %in% c("FALSE", "HALF")) %>% 
+      group_by(site) %>% 
+      summarise(total_ani_pollinated = sum(Freq))
+    
+  }else if(type_filter == "crops_not_attractive_bb_sol"){
+    
+    Total_animal_pollinated <- crop_county_animal %>% 
+      filter(cover_type == 'Crop') %>% 
+      filter(crops_not_attractive_bb_sol %in% c("FALSE", "HALF")) %>% 
+      group_by(site) %>% 
+      summarise(total_ani_pollinated = sum(Freq))
+    
+  }
   
   frac_animal_pollinated_all <- Total_county_area %>% 
     left_join(Total_animal_pollinated) %>% 
@@ -333,28 +337,51 @@ prepare_county_animal <- function(scaling, ...){
 
 
 
-##### honey bees #####
-
-prepare_honey_bees <- function(scaling, type){
+prepare_honey_bees_time <- function(scaling, type){
   
-  if(type == 'simple'){
-    honey_bees <- readRDS("clean_data/honey_bees/colonies_county_simple.rds")
-  }else if(type == 'canag'){
-    honey_bees <- readRDS("clean_data/honey_bees/colonies_county_canag.rds")
+    honey_bees <- readRDS("clean_data/honey_bees/colonies_time.rds")
     
-  }
+    all_us_sites <- readRDS(paste0("clean_data/sites/sites_counties.rds"))
+    
+    honey_year <- data.frame(new_year = paste0("yr", 1995:2015)[seq(1,21,3)], Year = c(rep(2002, 3), rep(2007, 2),
+                                                                       rep(2012, 1), rep(2017, 1)))
+    
+    year_site <- expand.grid(new_year = paste0("yr", 1995:2015)[seq(1,21,3)], state_county = all_us_sites$state_county)
+    
+    area_counties <- readRDS("clean_data/sites/area_counties.RDS") %>%
+      mutate(site = paste0("s_", state_county)) %>%
+      mutate(area_km2 = area_m_2*1e-6)
+    
+    honey_bees_all <- honey_bees %>% 
+      ### interpolates the same data to every intermediate year based on ag year
+      left_join(honey_year) %>% 
+      dplyr::select(new_year, state_county, Value) %>% 
+      full_join(year_site) %>% 
+      mutate(site = paste0("s_", state_county)) %>%
+      mutate(Value = ifelse(is.na(Value), 0, Value)) %>% 
+      left_join(area_counties) %>% 
+      mutate(col_area = Value/drop_units(area_km2)) %>% 
+      filter(!is.na(col_area))
+    
+  min_col <- min(honey_bees_all$col_area[honey_bees_all$col_area > 0])
   
-  honey_bees$col_county
   
-  min_col <- min(honey_bees$col_county[honey_bees$col_county > 0])
-  
-  county_colony_mat <- honey_bees %>% 
-    mutate(col_county = log(col_county + (min_col/2))) %>% 
+  ## check what is happening here with the honey mat
+  honey_mat <- honey_bees_all %>% 
+    ### interpolates the same data to every intermediate year based on ag year
+    left_join(honey_year) %>% 
+    dplyr::select(new_year, state_county, col_area) %>% 
+    full_join(year_site) %>% 
+    mutate(site = paste0("s_", state_county)) %>%
+    mutate(col_area = ifelse(is.na(col_area), 0, col_area)) %>% 
+    mutate(col_county = log(col_area + (min_col/2))) %>% 
+    dplyr::select(-state_county, -col_area) %>% 
+    tidyr::pivot_wider(names_from= 'new_year', values_from = 'col_county') %>% 
     tibble::column_to_rownames("site") %>% 
-    as.matrix() 
+    as.matrix()
   
-  county_colony_mat_scaled <- (county_colony_mat- mean(county_colony_mat, na.rm = TRUE))/sd(county_colony_mat, na.rm = TRUE)
+  honey_mat_scaled <- (honey_mat- mean(honey_mat, na.rm = TRUE))/sd(honey_mat, na.rm = TRUE)
   
-  return(county_colony_mat_scaled)
+  return(honey_mat_scaled)
   
 }

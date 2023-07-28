@@ -10,20 +10,11 @@ source("R/src/initialize.R")
 source("R/src/plot_env_functions.R")
 
 
-create_data_for_plots <- function(region){
+create_data_for_plots <- function(f){
+
+  res.summary <- readRDS(paste0("model_outputs/res.summary_genus_filtered_agriregion_pest_area_county_both_1995_2015_ms_area_honeytime_pestar_canag_15_", f,"_ALLFALSE.rds"))
   
-  family <- "ALL"
-  year_range <- c(1995, 2015)
-  
-  # env era
-  #model <- "ms_env_area_2"
-  model <- "ms_env_area_2_uncons"
-  
-  res <- readRDS(paste0("model_outputs/env/res_counties_", paste0(year_range, collapse = "_"), "_",model,"_", family, "_", region, ".rds"))
-  
-  res.summary <- readRDS(paste0("model_outputs/env/res.summary_counties_", paste0(year_range, collapse = "_"), "_",model,"_", family, "_", region, ".rds"))
-  
-  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_counties_", paste0(year_range, collapse = "_"),  "_", family, "_", region, ".rds"))
+  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_both_pest_area_county_1995_2015_",f,"_ALLFALSE.rds"))
   
   
   vars <- rownames(res.summary$psrf$psrf)
@@ -34,307 +25,253 @@ create_data_for_plots <- function(region){
   ncols_sum <- dim(summ.paper)[2]
   nrows_sum <- dim(summ.paper)[1]
   
-  write(region,file="summary_outputs/main_env.txt",append=TRUE)
-  write(c("            ",colnames(summ.paper)),,file="summary_outputs/main_env.txt", append=TRUE, ncolumns = (ncols_sum + 1))
-  
-  for(i in 1:nrows_sum){
-    write(paste(rownames(summ.paper)[i], paste(summ.paper[i,], collapse = " ")),file="summary_outputs/main_env.txt",append=TRUE)
-  }
-  
   ### assign correct chains ##
   
-  sims.mat <- do.call(rbind, res$mcmc)
+  sims.mat <- do.call(rbind, res.summary$mcmc)
   sims.arr <-
-    aperm(sapply(res$mcmc, I, simplify='array'), c(1,3,2))
+    aperm(sapply(res.summary$mcmc, I, simplify='array'), c(1,3,2))
   
   nera <- my.data[[1]]$nyr
   nsp <- my.data[[1]]$nsp
   species_directory <- my.data[[2]] %>% 
     mutate(sp_n = 1:n())
   
-  
-  env_list <- c('temp', 'prec', 'neonic', 'agriculture')
-  
-
-  for(env in env_list){
-    print(env)
-    
     # main trend occupancy
     
-    main_occupancy <- get.y.val.main.all(sims.mat = sims.mat, env, my.data = my.data)
+    main_occupancy <- get.y.val.main.all(sims.mat = sims.mat, my.data = my.data)
     
-    saveRDS(main_occupancy, paste0('plots/int_data_plots/env/main_',region,"_", env,'_occupancy.rds'))
-    
-  }
+    saveRDS(main_occupancy, paste0('plots/int_data_plots/env/main_',f,'_occupancy.rds'))
   
 }
 
-region_v <- c("West", "Center","SouthEast", "NorthEast")
+fam <- c("Andrenidae", "Apidae", "Halictidae", 
+         "Megachilidae", "Colletidae|Melittidae")
 
-lapply(region_v, create_data_for_plots)
+lapply(fam, create_data_for_plots)
 
 
-combs_env_rg <- expand.grid(region_v = c("West", "Center","SouthEast", "NorthEast"), env_list = c('temp', 'prec', 'neonic', 'agriculture'))
+main_family_list <- list()
 
-main_region_list <- list()
-
-for(r in 1:nrow(combs_env_rg)){
+for(f in fam){
   
-  main_region_list[[r]] <- readRDS(paste0('plots/int_data_plots/env/main_',combs_env_rg$region_v[r],"_", combs_env_rg$env_list[r],'_occupancy.rds')) %>% 
-    mutate(region = combs_env_rg$region_v[r], env = combs_env_rg$env_list[r]) %>% 
+  main_family_list[[f]] <- readRDS(paste0('plots/int_data_plots/env/main_',f,'_occupancy.rds')) %>% 
+    mutate(family = f) %>% 
     as.data.table()
   
 }
 
-region_nice_name <- data.frame(region = region_v, region_nice = c("West", "Center", "South East", "North East"))
-
-main_trend_prec <- main_region_list %>% 
+main_trend_pes <- main_region_list %>% 
   rbindlist() %>% 
-  left_join(region_nice_name) %>% 
-  filter(env == "prec") %>% 
   ggplot() +
-  geom_line(aes(x = pp, y = mean)) +
-  geom_ribbon(aes(x = pp, ymin = `X2.5.`, ymax = X97.5.), alpha = 0.3) +
-  facet_wrap(~region_nice) +
+  geom_line(aes(x = ps, y = mean)) +
+  geom_ribbon(aes(x = ps, ymin = `X2.5.`, ymax = X97.5.), alpha = 0.3) +
+  facet_wrap(~family) +
   theme_cowplot() +
   theme(strip.background =element_blank(), 
         axis.text = element_text(size = 15), 
         strip.text = element_text(size = 20), 
         axis.title = element_text(size = 20)) +
   ylab("Occupancy") +
-  xlab("Precipitation") 
+  xlab("Pesticide Use") +
+  scale_y_continuous(limits = c(0,1))
 
 
-ggsave(main_trend_prec, filename = "plots/trends/main_env_prec.jpeg")
+ggsave(main_trend_pes, filename = "plots/trends/main_env_pesticide.pdf")
 
 
-
-main_trend_temp <- main_region_list %>% 
+main_region_list %>% 
   rbindlist() %>% 
-  left_join(region_nice_name) %>% 
-  filter(env == "temp") %>% 
-  ggplot() +
-  geom_line(aes(x = tt1, y = mean)) +
-  geom_ribbon(aes(x = tt1, ymin = `X2.5.`, ymax = X97.5.), alpha = 0.3) +
-  facet_wrap(~region_nice) +
-  theme_cowplot() +
-  theme(strip.background =element_blank(), 
-        axis.text = element_text(size = 15), 
-        strip.text = element_text(size = 20), 
-        axis.title = element_text(size = 20)) +
-  ylab("Occupancy") +
-  xlab("Temperature") 
+  group_by(family) %>% 
+  summarise(min(ps), max(ps))
 
 
-ggsave(main_trend_temp, filename = "plots/trends/main_env_temp.jpeg")
+main_pest_df <- main_region_list %>% 
+  rbindlist()
 
-
-
-main_trend_agri <- main_region_list %>% 
-  rbindlist() %>% 
-  left_join(region_nice_name) %>% 
-  filter(env == "agriculture") %>% 
-  ggplot() +
-  geom_line(aes(x = ag, y = mean)) +
-  geom_ribbon(aes(x = ag, ymin = `X2.5.`, ymax = X97.5.), alpha = 0.3) +
-  facet_wrap(~region_nice) +
-  theme_cowplot() +
-  theme(strip.background =element_blank(), 
-        axis.text = element_text(size = 15), 
-        strip.text = element_text(size = 20), 
-        axis.title = element_text(size = 20)) +
-  ylab("Occupancy") +
-  xlab("Percent Agriculture") 
-
-
-ggsave(main_trend_agri, filename = "plots/trends/main_env_agri.jpeg")
-
-
-main_trend_neonic <- main_region_list %>% 
-  rbindlist() %>% 
-  left_join(region_nice_name) %>% 
-  filter(env == "neonic") %>% 
-  ggplot() +
-  geom_line(aes(x = nn, y = mean)) +
-  geom_ribbon(aes(x = nn, ymin = `X2.5.`, ymax = X97.5.), alpha = 0.3) +
-  facet_wrap(~region_nice) +
-  theme_cowplot() +
-  theme(strip.background =element_blank(), 
-        axis.text = element_text(size = 15), 
-        strip.text = element_text(size = 20), 
-        axis.title = element_text(size = 20)) +
-  ylab("Occupancy") +
-  xlab("Neonicotinoid Use") 
-
-
-ggsave(main_trend_neonic, filename = "plots/trends/main_env_neonic.jpeg")
-
-
-################ plot neonics for each species #######
-
-
-create_data_for_plots_species <- function(region){
+main_pest_df %>% 
+  filter(ps %in% c(min(main_pest_df$ps), max(main_pest_df$ps))) %>% 
+  select(mean, ps, family) %>% 
+  pivot_wider(names_from = ps, values_from = mean) %>% 
+  rename(no_pest = `-4.17560742453957`, max_pest = `1.77649633931698`) %>% 
+  mutate(net_change = no_pest - max_pest, percent_change = (no_pest - max_pest)/no_pest)
   
-  family <- "ALL"
-  year_range <- c(1995, 2015)
-  
-  # env era
-  model <- "ms_env_area_2"
-  
-  res <- readRDS(paste0("model_outputs/env/res_counties_", paste0(year_range, collapse = "_"), "_",model,"_", family, "_", region, ".rds"))
-  
-  res.summary <- readRDS(paste0("model_outputs/env/res.summary_counties_", paste0(year_range, collapse = "_"), "_",model,"_", family, "_", region, ".rds"))
-  
-  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_counties_", paste0(year_range, collapse = "_"),  "_", family, "_", region, ".rds"))
-  
-  ### assign correct chains ##
-  
-  sims.mat <- do.call(rbind, res$mcmc)
-  sims.arr <-
-    aperm(sapply(res$mcmc, I, simplify='array'), c(1,3,2))
-  
-  nera <- my.data[[1]]$nyr
-  nsp <- my.data[[1]]$nsp
-  
-  species_directory <- data.frame(finalName = my.data$sp) %>% 
-    mutate(sp_n = 1:n()) %>% 
-    left_join(my.data[[2]])
-  
-  env_list <- c('temp', 'prec', 'neonic', 'agriculture')
-  
- 
-  for(env in env_list){
-    print(env)
-    
-    # species by environment occupancy
-    
-    sp_occupancy <- lapply(1:nsp, FUN = function(x) get.y.val.all(sims.mat = sims.mat, ss = x, env, my.data = my.data))
-    
-    saveRDS(sp_occupancy, paste0('plots/int_data_plots/env/sp_',region,"_", env,'_occupancy.rds'))
-    
-    
-    ## calculate genus occupancy 
-    
-    gn <- names(table(species_directory$genus))[table(species_directory$genus) > 5]
-    
-    genus_occupancy <- lapply(1:length(gn), FUN = function(x) get.y.val.all.genus(sims.mat = sims.mat, gg = gn[x], env, my.data = my.data, species_directory = species_directory))
-    
-    saveRDS(genus_occupancy, paste0('plots/int_data_plots/env/gn_',region,"_", env,'_occupancy.rds'))
-    
-  }
-  
-}
+##### at the genus level for pesticide  #####
 
-
-
-region_v <- c("West", "Center","SouthEast", "NorthEast")
-
-lapply(region_v, create_data_for_plots_species)
-
-
-
-### create environment region spaguetti plots per species ### 
-
-
-region_env <- expand_grid(region_v = c("West","Center","NorthEast", "SouthEast"), env = c('temp', 'prec', 'neonic', 'agriculture'))
-
-for(re in 1:nrow(region_env)){
+create_data_for_plots <- function(f){
   
-  ## load data
+  res.summary <- readRDS(paste0("model_outputs/res.summary_genus_filtered_agriregion_pest_area_county_both_1995_2015_ms_area_honeytime_pestar_canag_15_", f,"_ALLFALSE.rds"))
   
-  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_counties_1995_2015_ALL_", region_env$region_v[re],".rds"))
-  
-  species_directory <- data.frame(finalName = my.data$sp) %>% 
-    mutate(ss = 1:n()) %>% 
-    left_join(my.data[[2]])
-  
-  sp_occupancy  <- readRDS(paste0('plots/int_data_plots/env/sp_',region_env$region_v[re],"_", region_env$env[re],'_occupancy.rds')) %>% 
-    rbindlist() %>% 
-    left_join(species_directory)
-  
-  genus_occupancy  <- readRDS(paste0('plots/int_data_plots/env/gn_',region_env$region_v[re],"_", region_env$env[re],'_occupancy.rds')) %>% 
-    rbindlist() %>% 
-    rename(genus = gg)
-  
-  sp_occu_fil <- sp_occupancy %>% 
-    filter(genus %in% genus_occupancy$genus)
-  
-  ## plot species only for genera with + 5 species
-  
- env_all <- data.frame(env = c('temp', 'prec', 'neonic', 'agriculture'), names_nice = 
-               c("Temperature", "Precipitation", "Neonicotinoid use", "Agricultural cover"), 
-             colname_df = c("tt1", "pp", "nn", "ag"))
-  
-  sp_genus_plot <- ggplot() +
-    geom_line(data = sp_occu_fil, aes_string(x = env_all$colname_df[env_all$env == region_env$env[re]], y = "mean", group= "finalName"), colour = 'grey') +
-    facet_wrap(~genus) +
-    geom_line(data = genus_occupancy, aes_string(x = env_all$colname_df[env_all$env == region_env$env[re]], y = "mean"), colour = 'black') +
-    geom_ribbon(data = genus_occupancy, aes_string(x = env_all$colname_df[env_all$env == region_env$env[re]], ymin = "X2.5.", ymax = "X97.5."), alpha = 0.3) +
-    theme_cowplot() +
-    theme(strip.background =element_blank(), 
-          axis.text = element_text(angle = 90)) +
-    ylab("Occupancy") +
-    xlab(env_all$names_nice[env_all$env == region_env$env[re]]) +
-    ggtitle(region_env$region_v[re])
-  
-  ggsave(sp_genus_plot, filename = paste0("plots/trends/sp_env_",region_env$env[re], "_", region_env$region_v[re],".jpeg"))
-  
-}
-
-
-
-################### just neonic results for the four regions ####
-
-region_v <- c("West", "Center","SouthEast", "NorthEast")
-
-mu.psi.all <- list()
-
-for(region in region_v){
-  
-  family <- "ALL"
-  year_range <- c(1995, 2015)
-  
-  # env era
-  model <- "ms_env_area_2"
-  
-  model <- "ms_env_area_2_uncons"
-  
-  res <- readRDS(paste0("model_outputs/env/res_counties_", paste0(year_range, collapse = "_"), "_",model,"_", family, "_", region, ".rds"))
-  
-  res.summary <- readRDS(paste0("model_outputs/env/res.summary_counties_", paste0(year_range, collapse = "_"), "_",model,"_", family, "_", region, ".rds"))
-  
-  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_counties_", paste0(year_range, collapse = "_"),  "_", family, "_", region, ".rds"))
-  
+  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_both_pest_area_county_1995_2015_",f,"_ALLFALSE.rds"))
   
   vars <- rownames(res.summary$psrf$psrf)
   summ <- get.summ(vars, res.summary)
   
   summ.paper <- summ[str_detect(rownames(summ), 'mu.psi'),]
   
-  mu.psi.all[[region]] <- summ.paper %>% 
-    data.frame() %>% 
-    tibble::rownames_to_column("Variable") 
+  ncols_sum <- dim(summ.paper)[2]
+  nrows_sum <- dim(summ.paper)[1]
+  
+  ### assign correct chains ##
+  
+  sims.mat <- do.call(rbind, res.summary$mcmc)
+  sims.arr <-
+    aperm(sapply(res.summary$mcmc, I, simplify='array'), c(1,3,2))
+  
+  nera <- my.data[[1]]$nyr
+  nsp <- my.data[[1]]$nsp
+  species_directory <- my.data[[2]] %>% 
+    mutate(sp_n = 1:n())
+  
+  # main trend occupancy
+  
+  main_occupancy <- get.y.val.genus.all(sims.mat = sims.mat, my.data = my.data, species_directory = species_directory)
+  
+  saveRDS(main_occupancy, paste0('plots/int_data_plots/env/genus_',f,'_occupancy.rds'))
+  
 }
+
+
+fam <- c("Andrenidae", "Apidae", "Halictidae", 
+         "Megachilidae", "Colletidae|Melittidae")
+
+lapply(fam, create_data_for_plots)
+
+
+genus_family_list <- list()
+
+for(f in fam){
   
+  genus_family_list[[f]] <- readRDS(paste0('plots/int_data_plots/env/genus_',f,'_occupancy.rds')) %>% 
+    mutate(family = f) %>% 
+    as.data.table()
+  
+}
 
-
-
-data.frame(region = c('West', "Center", "SouthEast", "NorthEast"), 
-           region_nice = c('West', "Center", "South East", "North East"))
-
-
-mu.psi.all %>% 
-  map_df(~data.frame(.x), .id = 'region') %>% 
-  left_join(data.frame(region = c('West', "Center", "SouthEast", "NorthEast"), 
-                       region_nice = c('West', "Center", "South East", "North East"))) %>% 
-  filter(!Variable %in% c("mu.psi.0", "mu.psi.tmax2")) %>% 
+genus_trend_pes <- genus_family_list %>% 
+  rbindlist() %>% 
   ggplot() +
-  facet_wrap(~Variable, scales = 'free') +
-  geom_point(aes(x = mean, y = region_nice)) + 
-  geom_errorbarh(aes(xmin = `X2.5.`, xmax = `X97.5.`, y = region_nice), height = 0) + 
-  geom_vline(xintercept = 0, colour = 'grey', linetype = 'dashed') +
+  facet_wrap(~family) +
+  geom_line(aes(x = ps, y = mean, group = gg)) +
+  geom_ribbon(aes(x = ps, ymin = `X2.5.`, ymax = X97.5., group = gg), alpha = 0.1) +
   theme_cowplot() +
-  xlab("Slope") + ylab("")  +
-  theme(strip.background = element_blank())
+  theme(strip.background =element_blank(), 
+        axis.text = element_text(size = 15), 
+        strip.text = element_text(size = 20), 
+        axis.title = element_text(size = 20)) +
+  ylab("Occupancy") +
+  xlab("Pesticide Use") +
+  scale_y_continuous(limits = c(0,1))
 
+
+ggsave(genus_trend_pes, filename = "plots/trends/genus_env_pesticide.pdf")
+
+####
+
+genus_family_list %>% 
+  rbindlist() %>% 
+  group_by(family, gg) %>% 
+  summarise(min(ps), max(ps))
+
+genus_family_pest_df <- genus_family_list %>% 
+  rbindlist()
+
+genus_family_pest_df %>% 
+  filter(ps %in% c(min(main_pest_df$ps), max(main_pest_df$ps))) %>% 
+  select(mean, ps, family, gg) %>% 
+  pivot_wider(names_from = ps, values_from = mean) %>% 
+  rename(no_pest = `-4.17560742453957`, max_pest = `1.77649633931698`) %>% 
+  mutate(net_change = no_pest - max_pest, percent_change = 100*(no_pest - max_pest)/no_pest) %>% 
+  arrange(percent_change) %>% View()
+
+
+
+
+
+##### at the genus level for animal pollinated agriculture  #####
+
+create_data_for_plots <- function(f){
   
+  res.summary <- readRDS(paste0("model_outputs/res.summary_genus_filtered_agriregion_pest_area_county_both_1995_2015_ms_area_climate_canag_17_", f,"_ALLFALSE.rds"))
+  
+  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_both_pest_area_county_1995_2015_",f,"_ALLFALSE.rds"))
+  
+  vars <- rownames(res.summary$psrf$psrf)
+  summ <- get.summ(vars, res.summary)
+  
+  summ.paper <- summ[str_detect(rownames(summ), 'mu.psi'),]
+  
+  ncols_sum <- dim(summ.paper)[2]
+  nrows_sum <- dim(summ.paper)[1]
+  
+  ### assign correct chains ##
+  
+  sims.mat <- do.call(rbind, res.summary$mcmc)
+  sims.arr <-
+    aperm(sapply(res.summary$mcmc, I, simplify='array'), c(1,3,2))
+  
+  nera <- my.data[[1]]$nyr
+  nsp <- my.data[[1]]$nsp
+  species_directory <- my.data[[2]] %>% 
+    mutate(sp_n = 1:n())
+  
+  # main trend occupancy
+  
+  main_occupancy <- get.y.val.genus.all.canag(sims.mat = sims.mat, my.data = my.data, species_directory = species_directory)
+  
+  saveRDS(main_occupancy, paste0('plots/int_data_plots/env/genus_',f,'_occupancy_canag.rds'))
+  
+}
+
+
+fam <- c("Andrenidae", "Apidae", "Halictidae", 
+         "Megachilidae", "Colletidae|Melittidae")
+
+lapply(fam, create_data_for_plots)
+
+
+genus_family_list <- list()
+
+for(f in fam){
+  
+  genus_family_list[[f]] <- readRDS(paste0('plots/int_data_plots/env/genus_',f,'_occupancy_canag.rds')) %>% 
+    mutate(family = f) %>% 
+    as.data.table()
+  
+}
+
+genus_trend_canag <- genus_family_list %>% 
+  rbindlist() %>% 
+  ggplot() +
+  facet_wrap(~family) +
+  geom_line(aes(x = ag, y = mean, group = gg)) +
+  geom_ribbon(aes(x = ag, ymin = `X2.5.`, ymax = X97.5., group = gg), alpha = 0.1) +
+  theme_cowplot() +
+  theme(strip.background =element_blank(), 
+        axis.text = element_text(size = 15), 
+        strip.text = element_text(size = 20), 
+        axis.title = element_text(size = 20)) +
+  ylab("Occupancy") +
+  xlab("Animal Pollinated Agriculture") +
+  scale_y_continuous(limits = c(0,1))
+
+
+ggsave(genus_trend_canag, filename = "plots/trends/genus_env_canag.pdf")
+
+####
+
+min_max_family <- genus_family_list %>% 
+  rbindlist() %>% 
+  group_by(family) %>% 
+  summarise(min_ag = min(ag), max_ag = max(ag)) %>% 
+  pivot_longer(names_to = 'min_max', values_to = 'ag', -family)
+  
+
+genus_family_canag_df <- genus_family_list %>% 
+  rbindlist()
+
+min_max_family %>% 
+  left_join(genus_family_canag_df) %>% 
+  select(family, gg, min_max, mean) %>% 
+  pivot_wider(names_from = min_max, values_from = mean) %>% 
+  mutate(net_change = min_ag - max_ag, percent_change = 100*(min_ag - max_ag)/min_ag) %>% 
+  arrange(percent_change) %>% View()

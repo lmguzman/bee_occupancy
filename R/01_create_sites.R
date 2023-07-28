@@ -1,4 +1,6 @@
-### new create sites ###
+### Script to create sites based on counties ###
+
+
 library(sf)
 library(dplyr)
 library(tidyr)
@@ -20,6 +22,8 @@ cont_usa <- state_county_fp %>%
   unite("state_county", STATEFP, COUNTYFP, sep = "_")
 
 saveRDS(cont_usa, "clean_data/sites/sites_counties.rds")
+
+## calculate area 
 
 area_cont_usa <- data.frame(state_county = cont_usa$state_county, area_m_2 =  st_area(cont_usa))
 

@@ -1,5 +1,5 @@
 
-## new with counties
+### Script to filter down the observations and do ranges based on counties ###
 
 library(dplyr)
 library(data.table)
@@ -7,13 +7,9 @@ library(sf)
 library(lubridate)
 library(stringr)
 
-## load data
+## load data observation data 
 
-#all_obs <- fread("/Volumes/Rasters/USC/bee_occupancy/raw_data/observations/cleaned_contiguousUS_records.csv")
-  
 all_obs <- fread("raw_data/data/cleaned_contiguousUS_records.csv")
-
-sum(str_detect(all_obs$finalName, "Bombus"))
 
 ## get unique locations and years
 
@@ -34,7 +30,6 @@ all_small2 <- all_small_clean[!(finalName %in% species_to_remove)]
 
 ## load site data 
 sites <- readRDS(paste0("clean_data/sites/sites_counties.rds"))
-
 
 ## add geometry for each lat and long
 

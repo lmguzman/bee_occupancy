@@ -231,72 +231,130 @@ correlations_df %>%
 ## the correlation is getting stronger over time ##
 
 
-
-## correlation between both pesticides and percent agriculture ##
-## check for every region##
-
-environmental_data <- readRDS(paste0("clean_data/data_prepared/environment_counties_1995_2015.rds"))
-
-region_df <- readRDS("clean_data/sites/site_counties_agriregion.rds") %>% 
-  mutate(region_collapsed = case_when(region %in% c("Southern Seaboard", "Eastern Uplands",
-                                                    "Mississippi Portal") ~ "South East",
-                                      region %in% c("Heartland", "Prairie Gateway") ~ "Central",
-                                      TRUE ~ region)) %>%
-  mutate(site = paste0("s_", state_county))
-
-
-
-both_df <- environmental_data$both_mat %>% 
-  data.frame() %>% 
-  tibble::rownames_to_column("site") %>% 
-  pivot_longer(names_to = 'year', values_to = 'both', -site)
-
-ag_df <- environmental_data$ag_mat %>% 
-  data.frame() %>% 
-  tibble::rownames_to_column("site") %>% 
-  pivot_longer(names_to = 'year', values_to = 'ag', -site)
-
-both_ag <- both_df %>% 
-  left_join(ag_df) %>%
-  left_join(region_df)
-
-correlations_df <- list()
-
-for(yr in sort(unique(both_ag$year))){
-  
-  both_ag_yr <- both_ag %>% 
-    filter(year == yr)
-  
-  cor_tested <- cor.test(both_ag_yr$both, both_ag_yr$ag)
-  
-  region_correlation <- split(both_ag_yr, both_ag_yr$region_collapsed) %>%
-    map(~cor.test(.x$both, .x$ag)) %>%
-    map(~tidy(.x)) %>%
-    map_df(~as.data.frame(.x), .id = "region_collapsed") %>%
-    mutate(year = yr)
-
-  correlations_df[[yr]] <- tidy(cor_tested) %>%  
-  mutate(year = yr) %>%
-  mutate(region_collapsed = "All") %>%
-  bind_rows(region_correlation) 
-  
-}
-## correlation between pyrethoids and neonics ##
-correlations_df %>% 
-  map_df(~as.data.frame(.x)) %>%
-  group_by(region_collapsed) %>%
-  summarise(mean(estimate), max(estimate), min(estimate))
-
-correlations_df %>% 
-  map_df(~as.data.frame(.x)) %>%
-  ggplot(aes(x = year, y = estimate, colour = region_collapsed)) +
-  geom_point() +
-  facet_wrap(~region_collapsed) +
-  theme_cowplot() 
-
-
 #### check diversity of crops in each region using the crop data layer ####
 
 ## read in crop data layer
 
+### number of species per region  per family 
+
+bee_data <- readRDS(file = paste0("clean_data/observations/observations_counties.rds"))
+
+genus_family <- bee_data[,.(genus, family)] %>% unique() %>% as.data.frame() %>% 
+  filter(genus != "") %>% 
+  filter(!(genus == "Ashmeadiella" & family == "Apidae")) %>% 
+  filter(!(genus == "Svastra" & family == "Megachilidae")) 
+
+species_region <- number_species_family %>% 
+  map(~as.data.frame(.x)) %>% 
+  map(~left_join(.x, genus_family)) %>% 
+  map_df(~as.data.frame(.x), .id = region) %>% 
+  mutate(family = ifelse(is.na(family), "Apidae", family))
 #
+species_family <- species_region %>% 
+  dplyr::select(family, finalName) %>% unique() %>% 
+  count(family)
+
+species_family$n  %>% sum()
+
+species_genus_family <- species_region %>% 
+  dplyr::select(finalName, genus, family) %>% 
+  unique()
+
+write.csv(species_genus_family, "clean_data/native_expected/species_genus_family.csv", row.names = FALSE)
+
+
+
+#### at the family level ####
+
+### number of sites and sites modelled for each familuy ###
+
+fam <- c("Andrenidae", "Apidae", "Halictidae", 
+         "Megachilidae", "Colletidae|Melittidae")
+
+counties <- readRDS("clean_data/sites/sites_counties.RDS") %>% 
+  mutate(site = paste0("s_", state_county))
+
+counties_modelled_plot <- list()
+
+for(f in fam){
+  
+  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_both_pest_area_county_1995_2015_",f,"_ALLFALSE.rds"))
+
+  print(f)
+  print(my.data[[1]]$nsite)
+  print(my.data[[1]]$nsp)
+  
+  counties_used <- counties %>%
+    left_join(data.frame(site = my.data$site, present = 1)) %>% 
+    mutate(present = ifelse(is.na(present), 0, present))
+  
+  counties_modelled_plot[[f]] <- ggplot() +
+    geom_sf(data = counties_used, aes(fill = factor(present)), colour = '#F2F3F4') +
+    theme_cowplot() +
+    scale_fill_manual(values = c('white', 'black')) +
+    theme(legend.position = "none", 
+          axis.text = element_blank(), 
+          axis.ticks = element_blank(), 
+          axis.line = element_blank(), 
+          strip.background = element_blank()) +
+    ggtitle(f)
+  
+
+}
+
+
+counties_modelled_all <- plot_grid(counties_modelled_plot[[1]], counties_modelled_plot[[2]], counties_modelled_plot[[3]], counties_modelled_plot[[4]], counties_modelled_plot[[5]], ncol = 2)
+
+ggsave(counties_modelled_all, file = 'plots/counties_modelled.pdf')
+
+
+
+### correlation between canag and pest ###
+
+library(broom)
+
+env_all <- readRDS("clean_data/data_prepared/environment_counties_1995_2015.rds")
+
+fam <- c("Andrenidae", "Apidae", "Halictidae", 
+         "Megachilidae", "Colletidae|Melittidae")
+
+canag_pest_plot_all <- list()
+
+canag_correlation_all <- list()
+
+for(f in fam){
+  
+  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_both_pest_area_county_1995_2015_",f,"_ALLFALSE.rds"))
+  
+  canag_correlation_all[[f]] <- apply(my.data[[1]]$pesticide1, 2, FUN = function(x) tidy(cor.test(my.data[[1]]$countanimal, x))) %>% 
+    map_df(~as.data.frame(.x), .id = 'year') %>% 
+    mutate(family = f)
+  
+  canag_pest_plot_all[[f]] <- data.frame(canag = my.data[[1]]$countanimal, my.data[[1]]$pesticide1) %>% 
+    pivot_longer(names_to = "year", values_to = "pest", -canag) %>% 
+    ggplot(aes(x = canag, y = pest, colour = str_remove(year, "yr"))) + 
+    geom_point() +
+    theme_cowplot() +
+    ggtitle(str_replace(f, "_", " ")) +
+    xlab("Proportion of the county that is \n animal pollinated agriculture")+
+    ylab("Pesticide Use") +
+    scale_color_discrete(name = "Year")
+
+  
+}
+
+
+canag_correlation_all %>% 
+  map_df(~as.data.frame(.x)) %>% 
+  ggplot(aes(x = year, y = estimate, colour = family, group = family)) +
+  geom_line() +
+  ylab("correlation between canag and pest")
+
+correlations_all <- plot_grid(canag_pest_plot_all[[1]], canag_pest_plot_all[[2]], canag_pest_plot_all[[3]],
+                              canag_pest_plot_all[[4]], canag_pest_plot_all[[5]])
+
+ggsave(correlations_all, file = "plots/int_data_plots/correlation_pest_APA.pdf")
+
+
+
+canag_correlation_all[[5]] %>% summary()

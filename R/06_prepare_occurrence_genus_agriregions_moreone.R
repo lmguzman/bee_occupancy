@@ -50,7 +50,7 @@ prepare_occurrence <- function( year_range, family_filter, oc_interval, region_f
   if(family_filter == 'ALL'){
     observations <- observations_raw[site %in% environmental_data$site_id2 & year >=  year_range[1] & year <=  year_range[2]]
   }else{
-    observations <- observations_raw[family %in% family_filter & site %in% environmental_data$site_id2 & year >=  year_range[1] & year <=  year_range[2]]
+    observations <- observations_raw[str_detect(family, family_filter) & site %in% environmental_data$site_id2 & year >=  year_range[1] & year <=  year_range[2]]
   }
   
   site_ID <- sort(unique(observations$site))
@@ -210,62 +210,6 @@ prepare_occurrence <- function( year_range, family_filter, oc_interval, region_f
   
   X <- occ.arr[master.index]
   
-  ## for the west to see if extreme temperatures were not helping
-  #tmax_min <- environmental_data$tmax_mat[site_ID,yr_ID] - min(environmental_data$tmax_mat[site_ID,yr_ID])
-  #below write:  tmax = tmax_min/max(tmax_min),
-  
-  # my.data.env <- list(X=X,
-  #                     yr=master.index[,'year'],
-  #                     site=master.index[,'site'],
-  #                     sp=master.index[,'sp'],
-  #                     nsp=dim(occ.arr)['nsp'],
-  #                     nsite=dim(occ.arr)['nsite'],
-  #                     nyr=dim(occ.arr)['nyear'],
-  #                     nind=nrow(master.index),
-  #                     area=area_v[site_ID],
-  #                     tmax = environmental_data$tmax_mat[site_ID,yr_ID], 
-  #                     prec = environmental_data$prec_mat[site_ID,yr_ID],
-  #                     pesticide1 = environmental_data$neonic_mat[site_ID,yr_ID],
-  #                     agriculture = environmental_data$ag_mat[site_ID,yr_ID])
-  # 
-  # 
-  # all_data_env <- list(my.data.env, sp_gen_directory, sites_by_sp, 
-  #                      site=site_ID,
-  #                      year= yr_ID,
-  #                      visit=paste0("v", 1:nvisit),
-  #                      sp=species_presence)
-  # 
-  # 
-  # saveRDS(all_data_env, paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_", paste0(year_range, collapse = "_"), "_", family_filter,"_", str_replace_all(unique(region_filter), " ", "_"), strict_filter,".rds" ))
-  # 
-  ## pyretrhoids
-  
-  # my.data.env <- list(X=X,
-  #                     yr=master.index[,'year'],
-  #                     site=master.index[,'site'],
-  #                     sp=master.index[,'sp'],
-  #                     nsp=dim(occ.arr)['nsp'],
-  #                     nsite=dim(occ.arr)['nsite'],
-  #                     nyr=dim(occ.arr)['nyear'],
-  #                     nind=nrow(master.index),
-  #                     area=area_v[site_ID],
-  #                     tmax = environmental_data$tmax_mat[site_ID,yr_ID], 
-  #                     prec = environmental_data$prec_mat[site_ID,yr_ID],
-  #                     pesticide1 = environmental_data$pyr_mat[site_ID,yr_ID],
-  #                     agriculture = environmental_data$ag_mat[site_ID,yr_ID])
-  # 
-  # 
-  # all_data_env <- list(my.data.env, sp_gen_directory, sites_by_sp, 
-  #                      site=site_ID,
-  #                      year= yr_ID,
-  #                      visit=paste0("v", 1:nvisit),
-  #                      sp=species_presence)
-  # 
-  # 
-  # saveRDS(all_data_env, paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_pyr_", paste0(year_range, collapse = "_"), "_", family_filter,"_", str_replace_all(unique(region_filter), " ", "_"), strict_filter,".rds" ))
-  # 
-  # 
-  
   ## summed pyrethroids and neonics
   
   my.data.env <- list(X=X,
@@ -279,13 +223,12 @@ prepare_occurrence <- function( year_range, family_filter, oc_interval, region_f
                       area=area_v[site_ID],
                       tmax = environmental_data$tmax_mat[site_ID,yr_ID], 
                       prec = environmental_data$prec_mat[site_ID,yr_ID],
-                      pesticide1 = environmental_data$both_mat[site_ID,yr_ID],
                       pesticidearea = environmental_data$both_mat_area[site_ID,yr_ID],
                       agriculture = environmental_data$ag_mat[site_ID,yr_ID], 
-                      fracanimal = environmental_data$fan_mat[site_ID],
                       countanimal = environmental_data$county_fan_mat[site_ID],
-                      honeybeesimple = environmental_data$simple_col_mat[site_ID],
-                      honeybeecanag = environmental_data$canag_col_mat[site_ID])
+                      countanimalmb = environmental_data$county_fan_mat_mb[site_ID],
+                      countanimalabs = environmental_data$county_fan_mat_abs[site_ID],
+                      honeybeetime = environmental_data$time_col_mat[site_ID, yr_ID])
   
   
   all_data_env <- list(my.data.env, sp_gen_directory, sites_by_sp, 
@@ -301,22 +244,13 @@ prepare_occurrence <- function( year_range, family_filter, oc_interval, region_f
 
 ## prepare occurrence for regions
 
-region_df <- readRDS("clean_data/sites/site_counties_agriregion.rds") %>% 
-  mutate(region_collapsed = case_when(region %in% c("Southern Seaboard", "Eastern Uplands",
-                                                    "Mississippi Portal") ~ "South East",
-                                      region %in% c("Heartland", "Prairie Gateway") ~ "Central",
-                                      TRUE ~ region))
+fam <- c("Andrenidae", "Apidae", "Halictidae", 
+         "Megachilidae", "Colletidae|Melittidae")
 
-
-for(r in unique(region_df$region_collapsed)){
-  prepare_occurrence( c(1995, 2015), "ALL", 3, r, FALSE)
-  
+for(f in fam){
+  prepare_occurrence( c(1995, 2015), f, 3, "ALL", FALSE)
 }
 
-agriregions <- paste0(str_replace_all(c("Basin and Range", "South East",
-                                        "Fruitful Rim",  
-                                        "Northern Great Plains","Northern Crescent", "Central"), 
-                                      " ", "_"), "FALSE")
 
 
 

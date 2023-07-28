@@ -23,7 +23,7 @@ files_results <- list.files("model_outputs/")
 
 ## get only model outputs with filtered genus
 
-filtered_genus <- files_results[str_detect(files_results, "genus_filtered_agriregi")]
+filtered_genus <- files_results[str_detect(files_results, "filtered_agriregion_pest_area_county")]
 
 
 ## get the unique results from res_ vs res.summary
@@ -44,7 +44,7 @@ for(f in unique_results){
   
   if(res.summary$thin == 1000){
     #saveRDS(res, paste0("model_outputs/long_runs/",  str_replace(str_replace(f, "res.summary_", "res_"), "agriregio_", "agriregion_")))
-    saveRDS(res.summary, paste0("model_outputs/long_runs/",f))
+    #saveRDS(res.summary, paste0("model_outputs/long_runs/",f))
     run_length <- "long"
 
   }
@@ -54,9 +54,11 @@ for(f in unique_results){
   
   summ.paper <- summ[str_detect(rownames(summ), 'mu.psi'),]
   
-  model <- str_remove_all(str_extract(f, "ms_\\S*_ALL"), "_ALL")
+  model <- str_extract(f, "ms_\\S*_\\d+")
   
-  region <- str_remove_all(str_extract(f, "ALL_\\S*"), "ALL_|FALSE|.rds")
+  family <- str_remove(str_remove(str_extract(f, "ms_\\S*_ALL"), 'ms_\\S*_\\d+\\_'), "_ALL")
+  
+  region <- str_remove_all(str_extract(f, "ALL\\S*"), "ALL_|FALSE|.rds")
   
   pyr <- str_extract(f, "pyr|both")
   
@@ -71,11 +73,11 @@ for(f in unique_results){
   county_area <- ifelse(str_detect(f, "areacounty"), TRUE, FALSE)
   
   if(nrow(summ.paper) == 7){
-    compiled_results[[f]] <- data.frame(summ.paper, model = model, region = region, pyr = pyr, trait = c(rep(NA, 4),'above', 'below', NA),
+    compiled_results[[f]] <- data.frame(summ.paper, model = model, family = family, region = region, pyr = pyr, trait = c(rep(NA, 4),'above', 'below', NA),
                                         variable = variable, genus_filtered = genus_filtered, pest_area=pest_area, county_area = county_area, run_length = run_length)
     
   }else{
-    compiled_results[[f]] <- data.frame(summ.paper, model = model, region = region, pyr = pyr, trait = 'all', variable = variable, genus_filtered = genus_filtered,
+    compiled_results[[f]] <- data.frame(summ.paper, model = model, family = family, region = region, pyr = pyr, trait = 'all', variable = variable, genus_filtered = genus_filtered,
                                         pest_area=pest_area, county_area = county_area, run_length = run_length) 
   }
 
@@ -89,6 +91,374 @@ saveRDS(all_results, "model_outputs/all_results.rds")
 #### look at summaries first ####
 
 compiled_results <- readRDS("model_outputs/all_results.rds")
+
+
+### Figure 2
+
+## the effect of agriculture Model 1 ##
+
+canag_effect <- compiled_results %>% 
+  filter(family != "ALL" & model %in% c("ms_area_climate_canag_17") & variable != "0") %>% 
+  filter(variable == 'canag') %>% 
+  mutate(significant = ifelse((`X2.5.` < 0 & X97.5. < 0 )|(`X2.5.` > 0 & X97.5. > 0 ), "*", "")) %>% 
+  ggplot() +
+  geom_point(aes(x = mean, y = family), size = 5, color = '#008080') +
+  geom_errorbarh(aes(xmin = `X2.5.`, xmax = `X97.5.`, y = family), height = 0, linewidth = 3, color = '#008080') +
+  geom_vline(xintercept = 0, linetype="dashed", colour = 'grey', linewidth = 2) +
+  geom_text(aes(x = 0.5, y = family, label = significant), size = 20, show.legend = FALSE)  +
+  theme_cowplot() +
+  theme(legend.position = 'none', 
+        axis.text = element_text(size = 25), 
+        strip.background = element_blank(), 
+        axis.title = element_text(size = 25)) +
+  scale_x_continuous(limits = c(-1, 1)) +
+  ylab("") +
+  xlab("Effect of Animal Pollinated Agriculture \n on Wild Bee Occupancy")
+  #xlab(expression(~mu[~psi["Animal Pollinated Agriculture"]])) 
+
+  ggsave(canag_effect, file = "plots/Figure2_p1.pdf", width = 10)
+
+
+## the effect of honey bees ##
+
+honey_bee_effect <- compiled_results %>% 
+  filter(family != "ALL" & model %in% c("ms_area_honeytime_canag_16") & variable != "0") %>% 
+  filter(variable == 'col') %>% 
+  mutate(significant = ifelse((`X2.5.` < 0 & X97.5. < 0 )|(`X2.5.` > 0 & X97.5. > 0 ), "*", "")) %>% 
+  mutate(positive = ifelse(mean < 0, 'negative', 'positive')) %>% 
+  ggplot() +
+  geom_point(aes(x = mean, y = family), size = 5, color = '#008080') +
+  geom_errorbarh(aes(xmin = `X2.5.`, xmax = `X97.5.`, y = family), height = 0, linewidth = 3, color = '#008080') +
+  geom_vline(xintercept = 0, linetype="dashed", colour = 'grey', linewidth = 2) +
+  geom_text(aes(x = 0.5, y = family, label = significant), size = 20, show.legend = FALSE)  +
+  theme_cowplot() +
+  theme(legend.position = 'none', 
+        axis.text = element_text(size = 25), 
+        strip.background = element_blank(), 
+        axis.title = element_text(size = 25)) +
+  scale_x_continuous(limits = c(-1, 1)) +
+  ylab("") +
+  xlab("Effect of Honey Bees on \n Wild Bee Occupancy")
+
+ggsave(honey_bee_effect, file = "plots/Figure2_p2.pdf", width = 10)
+
+## the effect of pesticides ##
+
+pesticide_effect <-compiled_results %>% 
+  filter(family != "ALL" & model %in% c("ms_area_honeytime_pestar_canag_15") & variable != "0") %>% 
+  filter(variable == 'pest1') %>% 
+  mutate(significant = ifelse((`X2.5.` < 0 & X97.5. < 0 )|(`X2.5.` > 0 & X97.5. > 0 ), "*", "")) %>% 
+  mutate(positive = ifelse(mean < 0, 'negative', 'positive')) %>% 
+  ggplot() +
+  geom_point(aes(x = mean, y = family), size = 5, color = '#008080') +
+  geom_errorbarh(aes(xmin = `X2.5.`, xmax = `X97.5.`, y = family), height = 0, linewidth = 3, color = '#008080') +
+  geom_vline(xintercept = 0, linetype="dashed", colour = 'grey', linewidth = 2) +
+  geom_text(aes(x = 0.5, y = family, label = significant), size = 20, show.legend = FALSE)  +
+  theme_cowplot() +
+  theme(legend.position = 'none', 
+        axis.text = element_text(size = 25), 
+        strip.background = element_blank(), 
+        axis.title = element_text(size = 25)) +
+  scale_x_continuous(limits = c(-1, 1)) +
+  ylab("") +
+  xlab("Effect of Pesticide Use \n on Wild Bee Occupancy")
+
+ggsave(pesticide_effect, file = "plots/Figure2_p3.pdf", width = 10)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Original <- compiled_results %>% 
+  filter(family != "ALL" & model %in% c("ms_area_honeytime_pestar_canag_15") & variable != "0") %>% 
+  filter(variable == 'pest1') %>% 
+  mutate(significant = ifelse((`X2.5.` < 0 & X97.5. < 0 )|(`X2.5.` > 0 & X97.5. > 0 ), "*", "")) %>% 
+  mutate(positive = ifelse(mean < 0, 'negative', 'positive')) %>% 
+  ggplot() +
+  geom_point(aes(x = mean, y = family), size = 5, color = '#008080') +
+  geom_errorbarh(aes(xmin = `X2.5.`, xmax = `X97.5.`, y = family), height = 0, linewidth = 3, color = '#008080') +
+  geom_vline(xintercept = 0, linetype="dashed", colour = 'grey', linewidth = 2) +
+  geom_text(aes(x = 0.5, y = family, label = significant), size = 20, show.legend = FALSE)  +
+  theme_cowplot() +
+  #theme(legend.position = 'none', 
+  #      axis.text = element_text(size = 25), 
+  #      strip.background = element_blank(), 
+  #      axis.title = element_text(size = 25)) +
+  scale_x_continuous(limits = c(-1, 1)) +
+  ylab("") +
+  xlab("Effect of Pesticide Use \n on Wild Bee Occupancy")
+
+Managed_bees <- compiled_results %>% 
+  filter(family != "ALL" & model %in% c("ms_area_honeytime_pestar_canagmb_15") & variable != "0") %>% 
+  filter(variable == 'pest1') %>% 
+  mutate(significant = ifelse((`X2.5.` < 0 & X97.5. < 0 )|(`X2.5.` > 0 & X97.5. > 0 ), "*", "")) %>% 
+  mutate(positive = ifelse(mean < 0, 'negative', 'positive')) %>% 
+  ggplot() +
+  geom_point(aes(x = mean, y = family), size = 5, color = '#008080') +
+  geom_errorbarh(aes(xmin = `X2.5.`, xmax = `X97.5.`, y = family), height = 0, linewidth = 3, color = '#008080') +
+  geom_vline(xintercept = 0, linetype="dashed", colour = 'grey', linewidth = 2) +
+  geom_text(aes(x = 0.5, y = family, label = significant), size = 20, show.legend = FALSE)  +
+  theme_cowplot() +
+  #theme(legend.position = 'none', 
+  #      axis.text = element_text(size = 25), 
+  #      strip.background = element_blank(), 
+  #      axis.title = element_text(size = 25)) +
+  scale_x_continuous(limits = c(-1, 1)) +
+  ylab("") +
+  xlab("Effect of Pesticide Use \n on Wild Bee Occupancy")
+
+attractive <- compiled_results %>% 
+  filter(family != "ALL" & model %in% c("ms_area_honeytime_pestar_canagabs_15") & variable != "0") %>% 
+  filter(variable == 'pest1') %>% 
+  mutate(significant = ifelse((`X2.5.` < 0 & X97.5. < 0 )|(`X2.5.` > 0 & X97.5. > 0 ), "*", "")) %>% 
+  mutate(positive = ifelse(mean < 0, 'negative', 'positive')) %>% 
+  ggplot() +
+  geom_point(aes(x = mean, y = family), size = 5, color = '#008080') +
+  geom_errorbarh(aes(xmin = `X2.5.`, xmax = `X97.5.`, y = family), height = 0, linewidth = 3, color = '#008080') +
+  geom_vline(xintercept = 0, linetype="dashed", colour = 'grey', linewidth = 2) +
+  geom_text(aes(x = 0.5, y = family, label = significant), size = 20, show.legend = FALSE)  +
+  theme_cowplot() +
+  #theme(legend.position = 'none', 
+  #      axis.text = element_text(size = 25), 
+  #      strip.background = element_blank(), 
+  #      axis.title = element_text(size = 25)) +
+  scale_x_continuous(limits = c(-1, 1)) +
+  ylab("") +
+  xlab("Effect of Pesticide Use \n on Wild Bee Occupancy")
+
+
+
+other_crops <- plot_grid(Original, Managed_bees, attractive, labels = c("Not require animal pollination = original", "uses managed bees = No", "attractive to bumbles and solitary"), nrow = 1)
+
+ggsave(other_crops, file = "plots/other_crops.pdf", width = 20)
+
+
+
+
+compiled_results %>% 
+  map_df(~as.data.frame(.x)) %>% 
+  filter(is.na(pyr) & model == 'env_area')
+
+compiled_results %>% 
+  map_df(~as.data.frame(.x)) %>%
+  filter(model %in% c('env_area_4','env_area_5')) %>%
+  #filter(region ==  "South_East") %>%
+  #select(mean:pyr) %>% 
+  arrange(region, model)
+
+
+
+#### across all bees ##
+
+
+all_estimates <- compiled_results %>% 
+  map_df(~as.data.frame(.x)) %>% 
+  filter(trait == 'all' & variable == 'pest1') %>% 
+  mutate(region_nice = str_replace_all(region, "_", " ")) %>% 
+  mutate(significant = ifelse(`X2.5.` < 0 & X97.5. < 0, "*", "")) %>% 
+  mutate(pest = case_when(is.na(pyr) ~ "Neonicotinoid",
+                          pyr == "pyr" ~ "Pyrethroid", 
+                          pyr == "both" ~ "Neonicotinoid and \nPyrethroid")) %>% 
+  ggplot() +
+  facet_wrap(~pest) +
+  geom_point(aes(x = mean, y = region_nice), size = 3) +
+  geom_errorbarh(aes(xmin = `X2.5.`, xmax = `X97.5.`, y = region_nice), height = 0, linewidth = 1) +
+  geom_vline(xintercept = 0, linetype="dashed", colour = 'grey') +
+  theme_cowplot() +
+  theme(axis.text = element_text(size = 15), 
+        strip.background = element_blank()) +
+  xlab(expression(~mu[~psi["pesticide"]]))+ ylab("") +
+  geom_text(aes(x = 0.5, y = region_nice, label = significant), size = 10, show.legend = FALSE)
+  
+
+ggsave(all_estimates, filename = 'plots/all_estimates.jpg')
+
+ggsave(all_estimates, filename = 'plots/all_estimates.pdf')
+
+### other variables ##
+
+all_estimates_env <- compiled_results %>% 
+  map_df(~as.data.frame(.x)) %>% 
+  filter(trait == 'all') %>% 
+  mutate(region_nice = str_replace_all(region, "_", " ")) %>% 
+  mutate(significant = ifelse(`X2.5.` < 0 & X97.5. < 0, "*", "")) %>% 
+  mutate(pest = case_when(is.na(pyr) ~ "Neonicotinoid",
+                          pyr == "pyr" ~ "Pyrethroid", 
+                          pyr == "both" ~ "Neonicotinoid and \nPyrethroid")) %>% 
+  ggplot() +
+  facet_grid(cols = vars(pest), rows = vars(region_nice)) +
+  geom_point(aes(x = mean, y = variable), size = 3) +
+  geom_errorbarh(aes(xmin = `X2.5.`, xmax = `X97.5.`, y = variable), height = 0, linewidth = 1) +
+  geom_vline(xintercept = 0, linetype="dashed", colour = 'grey') +
+  theme_cowplot() +
+  theme(axis.text = element_text(size = 15), 
+        strip.background = element_blank()) +
+  xlab(expression(~mu[~psi["pesticide"]]))+ ylab("") +
+  geom_text(aes(x = 2, y = variable, label = significant), size = 10, show.legend = FALSE)
+
+
+ggsave(all_estimates_env, filename = 'plots/all_estimates_env.jpg')
+
+ggsave(all_estimates_env, filename = 'plots/all_estimates_env.pdf')
+
+### divided by traits ### 
+
+all_estimates_trait <- compiled_results %>% 
+  map_df(~as.data.frame(.x)) %>% 
+  filter(trait != 'all'& str_detect(variable, "pest")) %>% 
+  mutate(region_nice = str_replace_all(region, "_", " ")) %>% 
+  mutate(significant = ifelse((`X2.5.` < 0 & X97.5. < 0 ) | (`X2.5.` > 0 & X97.5. > 0 ), "*", "")) %>% 
+  mutate(pest = case_when(is.na(pyr) ~ "Neonicotinoid",
+                          pyr == "pyr" ~ "Pyrethroid", 
+                          pyr == "both" ~ "Neonicotinoid and \nPyrethroid")) %>% 
+  ggplot() +
+  facet_wrap(~pest) +
+  geom_point(aes(x = mean, y = region_nice, colour = trait), size = 3) +
+  geom_errorbarh(aes(xmin = `X2.5.`, xmax = `X97.5.`, y = region_nice, colour = trait), height = 0, linewidth = 1) +
+  geom_vline(xintercept = 0, linetype="dashed", colour = 'grey') +
+  theme_cowplot() +
+  theme(axis.text = element_text(size = 15), 
+        strip.background = element_blank(), 
+        legend.title = element_blank(), 
+        legend.position = 'bottom') +
+  xlab(expression(~mu[~psi["pesticide"]]))+ ylab("") +
+  geom_text(aes(x = 1, y = region_nice, label = significant, colour = trait), size = 10, show.legend = FALSE)
+
+
+ggsave(all_estimates_trait, filename = 'plots/all_estimates_trait.jpg')
+
+ggsave(all_estimates_trait, filename = 'plots/all_estimates_trait.pdf')
+
+
+
+##### genus filtered neonics ##
+
+all_estimates <- compiled_results %>% 
+  map_df(~as.data.frame(.x)) %>% 
+  filter(trait == 'all' & variable == 'pest1', genus_filtered == TRUE, is.na(pyr)) %>% 
+  mutate(region_nice = str_replace_all(region, "_", " ")) %>% 
+  mutate(significant = ifelse(`X2.5.` < 0 & X97.5. < 0, "*", "")) %>% 
+  mutate(pest = case_when(is.na(pyr) ~ "Neonicotinoid",
+                          pyr == "pyr" ~ "Pyrethroid", 
+                          pyr == "both" ~ "Neonicotinoid and \nPyrethroid")) %>% 
+  ggplot() +
+  #facet_wrap(~pest) +
+  geom_point(aes(x = mean, y = region_nice), size = 3) +
+  geom_errorbarh(aes(xmin = `X2.5.`, xmax = `X97.5.`, y = region_nice), height = 0, linewidth = 1) +
+  geom_vline(xintercept = 0, linetype="dashed", colour = 'grey') +
+  theme_cowplot() +
+  theme(axis.text = element_text(size = 15), 
+        strip.background = element_blank()) +
+  xlab(expression(~mu[~psi["pesticide"]]))+ ylab("") +
+  geom_text(aes(x = 0.5, y = region_nice, label = significant), size = 10, show.legend = FALSE)
+
+ggsave(all_estimates, filename = 'plots/all_estimates_both_genus_fil.jpg')
+
+
+
+####
+
+my.data <- readRDS("clean_data/data_prepared/my_data_env_genus_trait_agriregion_1995_2015_ALL_South_EastFALSE.rds")
+
+my.data[[1]]$nest %>% length()
+
+my.data[[1]]$nest %>% table()
+
+
+my.data <- readRDS("clean_data/data_prepared/my_data_env_genus_trait_agriregion_1995_2015_ALL_Northern_Great_PlainsFALSE.rds")
+
+my.data[[1]]$nest %>% length()
+
+my.data[[1]]$nest %>% table()
+
+
+my.data <- readRDS("clean_data/data_prepared/my_data_env_genus_trait_agriregion_1995_2015_ALL_Basin_and_RangeFALSE.rds")
+
+my.data[[1]]$nest %>% length()
+
+my.data[[1]]$nest %>% table()
+
+
+
+compiled_results %>% 
+  map_df(~as.data.frame(.x)) %>% 
+  filter(trait == 'all', genus_filtered == TRUE, is.na(pyr))
+
+
+
+
+library(coda)
+
+files_results <- list.files("model_outputs/")
+
+unique_results <- files_results[str_detect(files_results, "ms_env_area_countyfan_two")]
+
+
+## for each file: 
+for(f in unique_results){
+  
+  f <- unique_results[2]
+  res.summary <- readRDS(paste0("model_outputs/",f))
+  vars <- rownames(res.summary$psrf$psrf)
+  summ <- get.summ(vars)
+  
+  summ.paper <- summ[str_detect(rownames(summ), 'mu.psi'),]
+  
+  
+}
+
+jagsfit1.mcmc <- res.summary$mcmc   # extract "MCMC" object (coda package)
+
+summary(jagsfit1.mcmc)
+
+plot(jagsfit1.mcmc[,c("mu.psi.pest1", "mu.psi.canag", "mu.psi.int.pest.can")])
+
+lattice::densityplot(jagsfit1.mcmc[,c("mu.psi.pest1", "mu.psi.canag", "mu.psi.int.pest.can")])
+
+
+
+DIC_reduced <- res.summary$DIC
+
+DIC_reduced
+
+dic_1 <- extract(res.summary, "dic")
+
+res.summary$dic
+
+?extract.runjags
+
+
+library(units)
+
+region_df <- readRDS("clean_data/sites/site_counties_agriregion.rds") %>% 
+  mutate(region_collapsed = case_when(region %in% c("Southern Seaboard", "Eastern Uplands",
+                                                    "Mississippi Portal") ~ "South East",
+                                      region %in% c("Heartland", "Prairie Gateway") ~ "Central",
+                                      TRUE ~ region))
+
+
+area <- readRDS("clean_data/sites/area_counties.RDS")
+
+
+region_df %>% 
+  left_join(area) %>% 
+  mutate(area_km2 = area_m_2 * 10^-6) %>% 
+  mutate(area_km2 = drop_units(area_km2)) %>% 
+  ggplot(aes(x = region_collapsed, y = area_km2)) +
+  geom_boxplot() + scale_y_log10()
+
+
+
+
 
 
 
@@ -382,8 +752,8 @@ for(region in region_df){
   res.summary <- readRDS(paste0("model_outputs/res.summary_genus_filtered_agriregion_pest_area_both_1995_2015_ms_env_area_countyfan_two_areacounty_ALL_",region,"FALSE.rds"))
   
   data.frame(canag = my.data[[1]]$countanimal, my.data[[1]]$pesticide1)
-
-
+  
+  
   canag_pest_plot[[region]] <- data.frame(canag = my.data[[1]]$countanimal, my.data[[1]]$pesticide1) %>% 
     pivot_longer(names_to = "year", values_to = "pest", -canag) %>% 
     ggplot(aes(x = canag, y = pest, colour = year)) + 
@@ -433,7 +803,7 @@ for(region in region_df){
     #scale_fill_viridis() +
     ggtitle(region) +
     theme_cowplot()
-
+  
 }
 
 plot_grid(canag_pest_plot[["Central"]], canag_pest_plot[["Basin_and_Range"]], canag_pest_plot[["Fruitful_Rim"]],
@@ -488,7 +858,7 @@ countag_plot_list <- list()
 
 
 for(region in region_df){
- 
+  
   my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_both_pest_area_1995_2015_ALL_",region,"FALSE.rds"))
   
   res.summary <- readRDS(paste0("model_outputs/res.summary_genus_filtered_agriregion_pest_area_both_1995_2015_ms_env_area_countyfan_two_ALL_",region,"FALSE.rds"))
@@ -528,7 +898,7 @@ for(region in region_df){
     #scale_fill_viridis() +
     ggtitle(region) +
     theme_cowplot()
-   
+  
   countag_plot_list[[region]] <- data.frame(countanimal = my.data[[1]]$countanimal) %>% 
     ggplot(aes(x = countanimal)) +
     geom_histogram() +
@@ -761,7 +1131,6 @@ for(region in region_df){
 plot_grid(interaction_plot_list[["Central"]], interaction_plot_list[["Basin_and_Range"]], interaction_plot_list[["Fruitful_Rim"]],
           interaction_plot_list[["Northern_Crescent"]], interaction_plot_list[["Northern_Great_Plains"]], interaction_plot_list[["South_East"]])
 
-
 ##########################################
 
 ### agriculture and animal pollinated agriculture ALONE
@@ -806,6 +1175,7 @@ compiled_results %>%
         strip.background = element_blank()) +
   xlab(expression(~mu[~psi["pesticide"]]))+ ylab("") +
   geom_text(aes(x = 0.5, y = region_nice, label = significant, colour = positive), size = 10, show.legend = FALSE)
+
 
 ######### canag + pest area #####
 
@@ -852,274 +1222,78 @@ compiled_results %>%
   geom_text(aes(x = 0.5, y = region_nice, label = significant, colour = positive), size = 10, show.legend = FALSE)
 
 
-### correlation between canag and pest ###
+######### honey bees alone #####
 
-library(broom)
-
-env_all <- readRDS("clean_data/data_prepared/environment_counties_1995_2015.rds")
+compiled_results$model %>% unique()
 
 compiled_results %>% 
-  filter(model %in% c('ms_env_area_countyfan_areacounty')) %>% 
-  dplyr::select(mean,  X2.5., X97.5.,  Rhat, region, variable) 
-
-region_df <- c("Fruitful_Rim", "Central", "Northern_Great_Plains", "Basin_and_Range", "Northern_Crescent", "South_East")
-
-canag_pest_plot_all <- list()
-
-canag_correlation_all <- list()
-
-for(region in region_df){
-  
-  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_both_pest_area_county_1995_2015_ALL_",region,"FALSE.rds"))
-  
-  res.summary <- readRDS(paste0("model_outputs/res.summary_genus_filtered_agriregion_pest_area_both_1995_2015_ms_env_area_countyfan_two_areacounty_ALL_",region,"FALSE.rds"))
-  
-  canag_correlation_all[[region]] <- apply(my.data[[1]]$pesticide1, 2, FUN = function(x) tidy(cor.test(my.data[[1]]$countanimal, x))) %>% 
-    map_df(~as.data.frame(.x), .id = 'year') %>% 
-    mutate(region = region)
-  
-  canag_correlation_all[[region]] <- apply(my.data[[1]]$pesticide1, 2, FUN = function(x) tidy(cor.test(my.data[[1]]$countanimal, x))) %>% 
-    map_df(~as.data.frame(.x), .id = 'year') %>% 
-    mutate(region = region)
-  
-  canag_pest_plot_all[[region]] <- data.frame(canag = my.data[[1]]$countanimal, my.data[[1]]$pesticide1) %>% 
-    pivot_longer(names_to = "year", values_to = "pest", -canag) %>% 
-    ggplot(aes(x = canag, y = pest, colour = year)) + 
-    geom_point() +
-    theme_cowplot() +
-    ggtitle(region) 
-  
-}
-
-canag_correlation_all %>% 
-  map_df(~as.data.frame(.x)) %>% 
-  ggplot(aes(x = year, y = estimate, colour = region, group = region)) +
-  geom_line() +
-  ylab("correlation between canag and pest")
-
-plot_grid(canag_pest_plot_all[["Central"]], canag_pest_plot_all[["Basin_and_Range"]], canag_pest_plot_all[["Fruitful_Rim"]],
-          canag_pest_plot_all[["Northern_Crescent"]], canag_pest_plot_all[["Northern_Great_Plains"]], canag_pest_plot_all[["South_East"]])
-
-
-
-
-
-
-
-
-
-
-
-
-
-compiled_results %>% 
-  map_df(~as.data.frame(.x)) %>% 
-  filter(is.na(pyr) & model == 'env_area')
-
-compiled_results %>% 
-  map_df(~as.data.frame(.x)) %>%
-  filter(model %in% c('env_area_4','env_area_5')) %>%
-  #filter(region ==  "South_East") %>%
-  #select(mean:pyr) %>% 
-  arrange(region, model)
-
-
-
-#### across all bees ##
-
-
-all_estimates <- compiled_results %>% 
-  map_df(~as.data.frame(.x)) %>% 
-  filter(trait == 'all' & variable == 'pest1') %>% 
+  filter(model %in% c('ms_area_honeysimple_7', 'ms_area_honeycanag_8', 'ms_area_honeytime_13') & variable != "0") %>% 
+  mutate(variable = ifelse(str_detect(model, "pestar") & variable == 'pest1', "pestar", variable)) %>% 
   mutate(region_nice = str_replace_all(region, "_", " ")) %>% 
-  mutate(significant = ifelse(`X2.5.` < 0 & X97.5. < 0, "*", "")) %>% 
-  mutate(pest = case_when(is.na(pyr) ~ "Neonicotinoid",
-                          pyr == "pyr" ~ "Pyrethroid", 
-                          pyr == "both" ~ "Neonicotinoid and \nPyrethroid")) %>% 
+  mutate(significant = ifelse((`X2.5.` < 0 & X97.5. < 0 )|(`X2.5.` > 0 & X97.5. > 0 ), "*", "")) %>% 
+  mutate(positive = ifelse(mean < 0, 'negative', 'positive')) %>% 
   ggplot() +
-  facet_wrap(~pest) +
-  geom_point(aes(x = mean, y = region_nice), size = 3) +
-  geom_errorbarh(aes(xmin = `X2.5.`, xmax = `X97.5.`, y = region_nice), height = 0, linewidth = 1) +
+  facet_wrap(~ model, scales = 'free_x') +
+  geom_point(aes(x = mean, y = region_nice, colour = positive, shape = variable), size = 3) +
+  geom_errorbarh(aes(xmin = `X2.5.`, xmax = `X97.5.`, y = region_nice, colour = positive), height = 0, linewidth = 1) +
   geom_vline(xintercept = 0, linetype="dashed", colour = 'grey') +
   theme_cowplot() +
   theme(axis.text = element_text(size = 15), 
         strip.background = element_blank()) +
-  xlab(expression(~mu[~psi["pesticide"]]))+ ylab("") +
-  geom_text(aes(x = 0.5, y = region_nice, label = significant), size = 10, show.legend = FALSE)
-  
-
-ggsave(all_estimates, filename = 'plots/all_estimates.jpg')
-
-ggsave(all_estimates, filename = 'plots/all_estimates.pdf')
-
-### other variables ##
-
-all_estimates_env <- compiled_results %>% 
-  map_df(~as.data.frame(.x)) %>% 
-  filter(trait == 'all') %>% 
-  mutate(region_nice = str_replace_all(region, "_", " ")) %>% 
-  mutate(significant = ifelse(`X2.5.` < 0 & X97.5. < 0, "*", "")) %>% 
-  mutate(pest = case_when(is.na(pyr) ~ "Neonicotinoid",
-                          pyr == "pyr" ~ "Pyrethroid", 
-                          pyr == "both" ~ "Neonicotinoid and \nPyrethroid")) %>% 
-  ggplot() +
-  facet_grid(cols = vars(pest), rows = vars(region_nice)) +
-  geom_point(aes(x = mean, y = variable), size = 3) +
-  geom_errorbarh(aes(xmin = `X2.5.`, xmax = `X97.5.`, y = variable), height = 0, linewidth = 1) +
-  geom_vline(xintercept = 0, linetype="dashed", colour = 'grey') +
-  theme_cowplot() +
-  theme(axis.text = element_text(size = 15), 
-        strip.background = element_blank()) +
-  xlab(expression(~mu[~psi["pesticide"]]))+ ylab("") +
-  geom_text(aes(x = 2, y = variable, label = significant), size = 10, show.legend = FALSE)
-
-
-ggsave(all_estimates_env, filename = 'plots/all_estimates_env.jpg')
-
-ggsave(all_estimates_env, filename = 'plots/all_estimates_env.pdf')
-
-### divided by traits ### 
-
-all_estimates_trait <- compiled_results %>% 
-  map_df(~as.data.frame(.x)) %>% 
-  filter(trait != 'all'& str_detect(variable, "pest")) %>% 
-  mutate(region_nice = str_replace_all(region, "_", " ")) %>% 
-  mutate(significant = ifelse((`X2.5.` < 0 & X97.5. < 0 ) | (`X2.5.` > 0 & X97.5. > 0 ), "*", "")) %>% 
-  mutate(pest = case_when(is.na(pyr) ~ "Neonicotinoid",
-                          pyr == "pyr" ~ "Pyrethroid", 
-                          pyr == "both" ~ "Neonicotinoid and \nPyrethroid")) %>% 
-  ggplot() +
-  facet_wrap(~pest) +
-  geom_point(aes(x = mean, y = region_nice, colour = trait), size = 3) +
-  geom_errorbarh(aes(xmin = `X2.5.`, xmax = `X97.5.`, y = region_nice, colour = trait), height = 0, linewidth = 1) +
-  geom_vline(xintercept = 0, linetype="dashed", colour = 'grey') +
-  theme_cowplot() +
-  theme(axis.text = element_text(size = 15), 
-        strip.background = element_blank(), 
-        legend.title = element_blank(), 
-        legend.position = 'bottom') +
-  xlab(expression(~mu[~psi["pesticide"]]))+ ylab("") +
-  geom_text(aes(x = 1, y = region_nice, label = significant, colour = trait), size = 10, show.legend = FALSE)
-
-
-ggsave(all_estimates_trait, filename = 'plots/all_estimates_trait.jpg')
-
-ggsave(all_estimates_trait, filename = 'plots/all_estimates_trait.pdf')
+  xlab(expression(~mu[~psi["honey bee"]]))+ ylab("") +
+  geom_text(aes(x = 0.5, y = region_nice, label = significant, colour = positive), size = 10, show.legend = FALSE)
 
 
 
-##### genus filtered neonics ##
+######### honey bees and pesticide #####
 
-all_estimates <- compiled_results %>% 
-  map_df(~as.data.frame(.x)) %>% 
-  filter(trait == 'all' & variable == 'pest1', genus_filtered == TRUE, is.na(pyr)) %>% 
-  mutate(region_nice = str_replace_all(region, "_", " ")) %>% 
-  mutate(significant = ifelse(`X2.5.` < 0 & X97.5. < 0, "*", "")) %>% 
-  mutate(pest = case_when(is.na(pyr) ~ "Neonicotinoid",
-                          pyr == "pyr" ~ "Pyrethroid", 
-                          pyr == "both" ~ "Neonicotinoid and \nPyrethroid")) %>% 
-  ggplot() +
-  #facet_wrap(~pest) +
-  geom_point(aes(x = mean, y = region_nice), size = 3) +
-  geom_errorbarh(aes(xmin = `X2.5.`, xmax = `X97.5.`, y = region_nice), height = 0, linewidth = 1) +
-  geom_vline(xintercept = 0, linetype="dashed", colour = 'grey') +
-  theme_cowplot() +
-  theme(axis.text = element_text(size = 15), 
-        strip.background = element_blank()) +
-  xlab(expression(~mu[~psi["pesticide"]]))+ ylab("") +
-  geom_text(aes(x = 0.5, y = region_nice, label = significant), size = 10, show.legend = FALSE)
-
-ggsave(all_estimates, filename = 'plots/all_estimates_both_genus_fil.jpg')
-
-
-
-####
-
-my.data <- readRDS("clean_data/data_prepared/my_data_env_genus_trait_agriregion_1995_2015_ALL_South_EastFALSE.rds")
-
-my.data[[1]]$nest %>% length()
-
-my.data[[1]]$nest %>% table()
-
-
-my.data <- readRDS("clean_data/data_prepared/my_data_env_genus_trait_agriregion_1995_2015_ALL_Northern_Great_PlainsFALSE.rds")
-
-my.data[[1]]$nest %>% length()
-
-my.data[[1]]$nest %>% table()
-
-
-my.data <- readRDS("clean_data/data_prepared/my_data_env_genus_trait_agriregion_1995_2015_ALL_Basin_and_RangeFALSE.rds")
-
-my.data[[1]]$nest %>% length()
-
-my.data[[1]]$nest %>% table()
-
-
+compiled_results$model %>% unique()
+'ms_area_honeysimple_pestar_9'
 
 compiled_results %>% 
-  map_df(~as.data.frame(.x)) %>% 
-  filter(trait == 'all', genus_filtered == TRUE, is.na(pyr))
+  filter(model %in% c('ms_area_honeytime_pestar_14') & variable != "0") %>% 
+  mutate(variable = ifelse(str_detect(model, "pestar") & variable == 'pest1', "pestar", variable)) %>% 
+  mutate(region_nice = str_replace_all(region, "_", " ")) %>% 
+  mutate(significant = ifelse((`X2.5.` < 0 & X97.5. < 0 )|(`X2.5.` > 0 & X97.5. > 0 ), "*", "")) %>% 
+  mutate(positive = ifelse(mean < 0, 'negative', 'positive')) %>% 
+  ggplot() +
+  facet_wrap(~ variable, scales = 'free_x') +
+  geom_point(aes(x = mean, y = region_nice, colour = positive, shape = variable), size = 3) +
+  geom_errorbarh(aes(xmin = `X2.5.`, xmax = `X97.5.`, y = region_nice, colour = positive), height = 0, linewidth = 1) +
+  geom_vline(xintercept = 0, linetype="dashed", colour = 'grey') +
+  theme_cowplot() +
+  theme(axis.text = element_text(size = 15), 
+        strip.background = element_blank()) +
+  xlab(expression(~mu[~psi["honey bee"]]))+ ylab("") +
+  geom_text(aes(x = 0.5, y = region_nice, label = significant, colour = positive), size = 10, show.legend = FALSE)
 
 
 
 
-library(coda)
+######### honey bees,  pesticide, and canag #####
 
-files_results <- list.files("model_outputs/")
+compiled_results$model %>% unique()
+"ms_area_honeycanag_pestar_canag_12"
 
-unique_results <- files_results[str_detect(files_results, "ms_env_area_countyfan_two")]
+"ms_area_honeytime_pestar_canag_15"
 
-
-## for each file: 
-for(f in unique_results){
-  
-  f <- unique_results[2]
-  res.summary <- readRDS(paste0("model_outputs/",f))
-  vars <- rownames(res.summary$psrf$psrf)
-  summ <- get.summ(vars)
-  
-  summ.paper <- summ[str_detect(rownames(summ), 'mu.psi'),]
-  
-  
-}
-
-jagsfit1.mcmc <- res.summary$mcmc   # extract "MCMC" object (coda package)
-
-summary(jagsfit1.mcmc)
-
-plot(jagsfit1.mcmc[,c("mu.psi.pest1", "mu.psi.canag", "mu.psi.int.pest.can")])
-
-lattice::densityplot(jagsfit1.mcmc[,c("mu.psi.pest1", "mu.psi.canag", "mu.psi.int.pest.can")])
+compiled_results %>% 
+  filter(model %in% c('ms_area_honeytime_pestar_canag_15') & variable != "0") %>% 
+  mutate(variable = ifelse(str_detect(model, "pestar") & variable == 'pest1', "pestar", variable)) %>% 
+  mutate(region_nice = str_replace_all(region, "_", " ")) %>% 
+  mutate(significant = ifelse((`X2.5.` < 0 & X97.5. < 0 )|(`X2.5.` > 0 & X97.5. > 0 ), "*", "")) %>% 
+  mutate(positive = ifelse(mean < 0, 'negative', 'positive')) %>% 
+  ggplot() +
+  facet_wrap(~ variable, scales = 'free_x') +
+  geom_point(aes(x = mean, y = region_nice, colour = positive, shape = variable), size = 3) +
+  geom_errorbarh(aes(xmin = `X2.5.`, xmax = `X97.5.`, y = region_nice, colour = positive), height = 0, linewidth = 1) +
+  geom_vline(xintercept = 0, linetype="dashed", colour = 'grey') +
+  theme_cowplot() +
+  theme(axis.text = element_text(size = 15), 
+        strip.background = element_blank()) +
+  xlab(expression(~mu[~psi["honey bee"]]))+ ylab("") +
+  geom_text(aes(x = 0.5, y = region_nice, label = significant, colour = positive), size = 10, show.legend = FALSE)
 
 
 
-DIC_reduced <- res.summary$DIC
-
-DIC_reduced
-
-dic_1 <- extract(res.summary, "dic")
-
-res.summary$dic
-
-?extract.runjags
-
-
-library(units)
-
-region_df <- readRDS("clean_data/sites/site_counties_agriregion.rds") %>% 
-  mutate(region_collapsed = case_when(region %in% c("Southern Seaboard", "Eastern Uplands",
-                                                    "Mississippi Portal") ~ "South East",
-                                      region %in% c("Heartland", "Prairie Gateway") ~ "Central",
-                                      TRUE ~ region))
-
-
-area <- readRDS("clean_data/sites/area_counties.RDS")
-
-
-region_df %>% 
-  left_join(area) %>% 
-  mutate(area_km2 = area_m_2 * 10^-6) %>% 
-  mutate(area_km2 = drop_units(area_km2)) %>% 
-  ggplot(aes(x = region_collapsed, y = area_km2)) +
-  geom_boxplot() + scale_y_log10()
+######### plots for paper ###########

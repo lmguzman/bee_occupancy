@@ -11,71 +11,32 @@ get.summ <- function(pars, res.summary) {
 
 ## mean effect function
 
-get.y.val.main <- function(sims.mat, tt1, pp,  nn, ag) {
+get.y.val.main <- function(sims.mat, ps, hb, ag) {
   chains <- expit(sims.mat[,'mu.psi.0'] +
-                    sims.mat[,'mu.psi.tmax1']    * tt1 +
-                    sims.mat[,'mu.psi.tmax2']    * tt1^2 +
-                    sims.mat[,'mu.psi.prec']   * pp  +
-                    sims.mat[,'mu.psi.pest1']    * nn    +
-                    sims.mat[,'mu.psi.agric']    * ag    
+                    sims.mat[,'mu.psi.pest1']    * ps    +
+                    sims.mat[,'mu.psi.canag']    * ag    +
+                    sims.mat[,'mu.psi.col']* hb
   )
   data.table(data.frame(mean=mean(chains), t(quantile(chains, probs=c(0.025,0.975)))))
 }
 
-get.y.val.main.all <- function(sims.mat, ev, my.data){
+get.y.val.main.all <- function(sims.mat, my.data){
+    
+    hb <- mean(my.data[[1]]$honeybeetime)
+    ps <- seq(from=min(my.data[[1]]$pesticidearea),  
+              to=  max(my.data[[1]]$pesticidearea),
+              length.out=1000)
+    ag <- mean(my.data[[1]]$countanimal)
+    
+    one_sp_ev_occ <- rbindlist(lapply(1:length(ps), function(x) get.y.val.main(sims.mat, hb = hb,  ps = ps[x], ag = ag)))
   
-  if(ev == "temp"){
-    t1 <- seq(from=min(my.data[[1]]$tmax),  
-              to=  max(my.data[[1]]$tmax),
-              length.out=1000)
-    p <- mean(my.data[[1]]$prec)
-    nc <- mean(my.data[[1]]$pesticide1)
-    ag <- mean(my.data[[1]]$agriculture)
-    
-    one_sp_ev_occ <- rbindlist(lapply(1:length(t1), function(x) get.y.val.main(sims.mat, tt1 = t1[x], 
-                                                                               pp = p, nn = nc, ag = ag)))
-    
-    
-  }else if(ev == 'prec'){
-    
-    t1 <- mean(my.data[[1]]$tmax)
-    p <- seq(from=min(my.data[[1]]$prec),  
-             to=  max(my.data[[1]]$prec),
-             length.out=1000)
-    nc <- mean(my.data[[1]]$pesticide1)
-    ag <- mean(my.data[[1]]$agriculture)
-    
-    one_sp_ev_occ <- rbindlist(lapply(1:length(p), function(x) get.y.val.main(sims.mat, tt1 = t1, 
-                                                                              pp = p[x],  nn = nc, ag = ag)))
-    
-  }else if(ev == 'neonic'){
-    
-    t1 <- mean(my.data[[1]]$tmax)
-    p <- mean(my.data[[1]]$prec)
-    nc <- seq(from=min(my.data[[1]]$pesticide1),  
-              to=  max(my.data[[1]]$pesticide1),
-              length.out=1000)
-    ag <- mean(my.data[[1]]$agriculture)
-    
-    one_sp_ev_occ <- rbindlist(lapply(1:length(nc), function(x) get.y.val.main(sims.mat, tt1 = t1, 
-                                                                               pp = p,  nn = nc[x], ag = ag)))
-    
-  }else if(ev == 'agriculture'){
-    
-    t1 <- mean(my.data[[1]]$tmax)
-    p <- mean(my.data[[1]]$prec)
-    nc <- mean(my.data[[1]]$pesticide1)
-    ag <- seq(from=min(my.data[[1]]$agriculture),  
-              to=  max(my.data[[1]]$agriculture),
-              length.out=1000)
-    
-    one_sp_ev_occ <- rbindlist(lapply(1:length(ag), function(x) get.y.val.main(sims.mat, tt1 = t1, 
-                                                                               pp = p,  nn = nc, ag = ag[x])))
-    
-  }
   
-  return(bind_cols(one_sp_ev_occ, tt1 = t1, pp = p, nn = nc, ag = ag))
+  return(bind_cols(one_sp_ev_occ, ps = ps, ag = ag, hb = hb))
 }
+
+
+
+
 
 ### species specific function 
 
@@ -93,143 +54,83 @@ get.y.val <- function(sims.mat, ss, tt1, pp, nn, ag) {
 }
 
 
-## genus function ####
+## genus function pesticide  ####
 
-get.y.val.genus <- function(sims.mat, ss, tt1, pp, nn, ag, gg) {
+get.y.val.genus <- function(sims.mat, ss, gg, ps, hb, ag) {
   
   chains <- expit(sims.mat[,'mu.psi.0'] +
                     sims.mat[,sprintf('psi.sp[%d]', ss)]       +
-                    sims.mat[,sprintf('psi.tmax1[%s]', ss)]    * tt1 +
-                    sims.mat[,sprintf('psi.tmax2[%s]', ss)]    * tt1^2 +
-                    sims.mat[,sprintf('psi.prec[%s]', ss)]    * pp  +
-                    sims.mat[,sprintf('psi.pest1[%s]', ss)]     * nn +
-                    sims.mat[,sprintf('psi.agric[%s]', ss)]     * ag
+                    sims.mat[,sprintf('psi.pest1[%s]', ss)]    * ps +
+                    sims.mat[,sprintf('psi.col[%s]', ss)]     * hb +
+                    sims.mat[,sprintf('psi.canag[%s]', ss)]     * ag
                   
   )
   
   genus_mean <- rowMeans(chains)
   
-  data.table(data.frame(gg, tt1, pp, nn, ag, mean=mean(genus_mean), t(quantile(genus_mean, probs=c(0.025,0.975)))))
+  data.table(data.frame(gg, ps, hb, ag, mean=mean(genus_mean), t(quantile(genus_mean, probs=c(0.025,0.975)))))
 }
 
-
-## calculating occupancy for all species for a certain environment ###
-
-get.y.val.all <- function(sims.mat, ev, ss, my.data){
+get.y.val.genus.all <- function(sims.mat, my.data, species_directory){
   
-  if(ev == "temp"){
+  hb <- mean(my.data[[1]]$honeybeetime)
+  ps <- seq(from=min(my.data[[1]]$pesticidearea),  
+            to=  max(my.data[[1]]$pesticidearea),
+            length.out=1000)
+  ag <- mean(my.data[[1]]$countanimal)
+
+  one_sp_ev_occ <- list()
+  
+  for(gg in unique(species_directory$genus)){
+    ss <- filter(species_directory, genus == gg)$sp_n
     
-    t1 <- seq(from=min(my.data[[1]]$tmax),  
-              to=  max(my.data[[1]]$tmax),
-              length.out=1000)
-    p <- mean(my.data[[1]]$prec)
-    nc <- mean(my.data[[1]]$pesticide1)
-    ag <- mean(my.data[[1]]$agriculture)
-    
-    one_sp_ev_occ <- rbindlist(lapply(1:length(t1), function(x) get.y.val(sims.mat, ss = ss, tt1 = t1[x],
-                                                                          pp = p, nn = nc, ag = ag)))
-    
-    
-  }else if(ev == 'prec'){
-    
-    t1 <- mean(my.data[[1]]$tmax)
-    p <- seq(from=min(my.data[[1]]$prec),  
-             to=  max(my.data[[1]]$prec),
-             length.out=1000)
-    nc <- mean(my.data[[1]]$pesticide1)
-    ag <- mean(my.data[[1]]$agriculture)
-    
-    one_sp_ev_occ <- rbindlist(lapply(1:length(p), function(x) get.y.val(sims.mat, ss = ss, tt1 = t1,
-                                                                         pp = p[x],  nn = nc, ag = ag)))
-    
-  }else if(ev == 'neonic'){
-    
-    t1 <- mean(my.data[[1]]$tmax)
-    p <- mean(my.data[[1]]$prec)
-    nc <- seq(from=min(my.data[[1]]$pesticide1),  
-              to=  max(my.data[[1]]$pesticide1),
-              length.out=1000)
-    ag <- mean(my.data[[1]]$agriculture)
-    
-    one_sp_ev_occ <- rbindlist(lapply(1:length(nc), function(x) get.y.val(sims.mat, ss = ss, tt1 = t1, 
-                                                                          pp = p, nn = nc[x], ag = ag)))
-    
-    
-  }else if(ev == 'agriculture'){
-    
-    t1 <- mean(my.data[[1]]$tmax)
-    p <- mean(my.data[[1]]$prec)
-    nc <- mean(my.data[[1]]$pesticide1)
-    ag <- seq(from=min(my.data[[1]]$agriculture),  
-              to=  max(my.data[[1]]$agriculture),
-              length.out=1000)
-    
-    one_sp_ev_occ <- rbindlist(lapply(1:length(ag), function(x) get.y.val(sims.mat, ss = ss, tt1 = t1, 
-                                                                          pp = p, nn = nc,  ag = ag[x])))
+    one_sp_ev_occ[[gg]] <- rbindlist(lapply(1:length(ps), function(x) get.y.val.genus(sims.mat, gg = gg, ss = ss, hb = hb,  ps = ps[x], ag = ag)))
     
   }
   
-  return(one_sp_ev_occ)
+  
+  return(rbindlist(one_sp_ev_occ))
 }
 
 
 
-### get genus occupancy for any environmental variation ##
+######## get genus animal pollinated agriculture ########
 
-get.y.val.all.genus <- function(sims.mat, ev, gg, my.data, species_directory){
+## genus function pesticide  ####
+
+get.y.val.genus.canag <- function(sims.mat, ss, gg, ag, tt, pc) {
   
-  ss <- filter(species_directory, genus == gg)$sp_n
+  chains <- expit(sims.mat[,'mu.psi.0'] +
+                    sims.mat[,sprintf('psi.sp[%d]', ss)]       +
+                    sims.mat[,sprintf('psi.tmax1[%s]', ss)]    * tt +
+                    sims.mat[,sprintf('psi.tmax2[%s]', ss)]    * tt^2 +
+                    sims.mat[,sprintf('psi.prec[%s]', ss)]     * pc +
+                    sims.mat[,sprintf('psi.canag[%s]', ss)]     * ag
+                  
+  )
   
-  if(ev == "temp"){
-    t1 <- seq(from=min(my.data[[1]]$tmax),  
-              to=  max(my.data[[1]]$tmax),
-              length.out=1000)
-    p <- mean(my.data[[1]]$prec)
-    nc <- mean(my.data[[1]]$pesticide1)
-    ag <- mean(my.data[[1]]$agriculture)
+  genus_mean <- rowMeans(chains)
+  
+  data.table(data.frame(gg, ag, tt, pc, mean=mean(genus_mean), t(quantile(genus_mean, probs=c(0.025,0.975)))))
+}
+
+get.y.val.genus.all.canag <- function(sims.mat, my.data, species_directory){
+  
+  pc <- mean(my.data[[1]]$prec)
+  tt <- mean(my.data[[1]]$tmax)
+  ag <- seq(from=min(my.data[[1]]$countanimal),  
+            to=  max(my.data[[1]]$countanimal),
+            length.out=1000)
+  
+  one_sp_ev_occ <- list()
+  
+  for(gg in unique(species_directory$genus)){
+    ss <- filter(species_directory, genus == gg)$sp_n
     
-    one_sp_ev_occ <- rbindlist(lapply(1:length(t1), function(x) get.y.val.genus(sims.mat, gg = gg, ss = ss, tt1 = t1[x], 
-                                                                                pp = p, nn = nc, ag = ag)))
-    
-    
-  }else if(ev == 'prec'){
-    
-    t1 <- mean(my.data[[1]]$tmax)
-    p <- seq(from=min(my.data[[1]]$prec),  
-             to=  max(my.data[[1]]$prec),
-             length.out=1000)
-    nc <- mean(my.data[[1]]$pesticide1)
-    ag <- mean(my.data[[1]]$agriculture)
-    
-    one_sp_ev_occ <- rbindlist(lapply(1:length(p), function(x) get.y.val.genus(sims.mat, gg = gg, ss = ss, tt1 = t1, 
-                                                                               pp = p[x],  nn = nc,  ag = ag)))
-    
-  }else if(ev == 'neonic'){
-    
-    t1 <- mean(my.data[[1]]$tmax)
-    p <- mean(my.data[[1]]$prec)
-    nc <- seq(from=min(my.data[[1]]$pesticide1),  
-              to=  max(my.data[[1]]$pesticide1),
-              length.out=1000)
-    ag <- mean(my.data[[1]]$agriculture)
-    
-    one_sp_ev_occ <- rbindlist(lapply(1:length(nc), function(x) get.y.val.genus(sims.mat, gg = gg, ss = ss, tt1 = t1, 
-                                                                                pp = p, nn = nc[x], ag = ag)))
-    
-  }else if(ev == 'agriculture'){
-    
-    t1 <- mean(my.data[[1]]$tmax)
-    p <- mean(my.data[[1]]$prec)
-    nc <- mean(my.data[[1]]$pesticide1)
-    ag <- seq(from=min(my.data[[1]]$agriculture),  
-              to=  max(my.data[[1]]$agriculture),
-              length.out=1000)
-    
-    one_sp_ev_occ <- rbindlist(lapply(1:length(ag), function(x) get.y.val.genus(sims.mat, gg = gg, ss = ss, tt1 = t1,
-                                                                                pp = p, nn = nc,  ag = ag[x])))
+    one_sp_ev_occ[[gg]] <- rbindlist(lapply(1:length(ag), function(x) get.y.val.genus.canag(sims.mat, gg = gg, ss = ss, tt = tt, pc = pc, ag = ag[x])))
     
   }
   
-  return(one_sp_ev_occ)
+  
+  return(rbindlist(one_sp_ev_occ))
 }
-

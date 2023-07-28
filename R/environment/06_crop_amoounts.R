@@ -1,19 +1,11 @@
 library(sf)
 library(dplyr)
 library(raster)
-library(exactextractr)
 library(data.table)
 library(stringr)
 library(ggplot2)
 library(purrr)
-
-region_df <- readRDS("clean_data/sites/site_counties_agriregion.rds") %>% 
-  mutate(region_collapsed = case_when(region %in% c("Southern Seaboard", "Eastern Uplands",
-                                                    "Mississippi Portal") ~ "South East",
-                                      region %in% c("Heartland", "Prairie Gateway") ~ "Central",
-                                      TRUE ~ region)) %>%
-  mutate(site = paste0("s_", state_county))
-
+library(tidyr)
 
 sites <- readRDS("clean_data/sites/sites_counties.RDS")
 
@@ -58,226 +50,87 @@ saveRDS(agriculture_all_year, 'clean_data/agriculture/crops_county.rds')
 
 agriculture_all_year <- readRDS('clean_data/agriculture/crops_county.rds')
 
+## load the match between pollinator attractiveness and land use
+
+pol_attc_land_use <- read.csv("raw_data/crops/pollinator_attractiveness 2.csv")
+
+### load and clean pollinator attractiveness data 
+
+pol_attractiveness <- read.csv("raw_data/crops/Copy of pollinator_attractiveness.csv") %>% 
+  dplyr::select(-c(X.1, X.6, X.8, X.11, X.12, X.14, X.15, X.18:X.27)) %>% 
+  unite(Crop, X, "Crop", sep = "") %>% mutate(Crop = str_trim(Crop)) %>% 
+  unite(Description, X.2, X.3, "Description", sep = "") %>% mutate(Description = str_trim(Description)) %>% 
+  unite(HB.Poll.1, X.4, "HB.Poll.1", sep = "") %>% mutate(HB.Poll.1 = str_trim(HB.Poll.1)) %>% 
+  unite(HB.Nec.1, X.5, "HB.Nec.1", sep = "") %>% mutate(HB.Nec.1 = str_trim(HB.Nec.1)) %>% 
+  unite(Bumble.Bees, X.7, "Bumble.Bees", sep = "") %>% mutate(Bumble.Bees = str_trim(Bumble.Bees)) %>% 
+  unite(Solitary.Bees,  X.9, X.10, "Solitary.Bees", sep = "") %>% mutate(Solitary.Bees = str_trim(Solitary.Bees)) %>% 
+  mutate(Requires.Bee.Pollination = ifelse(Requires.Bee.Pollination == "", Uses.Managed.Pollinators, Requires.Bee.Pollination)) %>% 
+  mutate(Requires.Bee.Pollination = ifelse(Requires.Bee.Pollination == "", `X.13`, Requires.Bee.Pollination)) %>% 
+  mutate(Uses.Managed.Pollinators = ifelse(X.16 != "", X.16, Uses.Managed.Pollinators)) %>% 
+  mutate(Uses.Managed.Pollinators = ifelse(X.17 != "", X.17, Uses.Managed.Pollinators)) %>% 
+  dplyr::select(-c(X.13:X.17)) 
+
+Crops_not_using_managed_bees <- pol_attractiveness %>% 
+  left_join(pol_attc_land_use) %>% 
+  filter(Uses.Managed.Pollinators == 'No') %>% 
+  dplyr::select(Crop, Land_Cover)
+
+Crops_not_requiring_pollination <- pol_attractiveness %>% 
+  left_join(pol_attc_land_use) %>% 
+  filter(Requires.Bee.Pollination == 'No') %>% 
+  dplyr::select(Crop, Land_Cover)
+
+Crops_not_attractive_all <- pol_attractiveness %>% 
+  left_join(pol_attc_land_use) %>% 
+  filter(HB.Poll.1 == '-' & HB.Nec.1 == '-' & Bumble.Bees == "-" & Solitary.Bees == '-') %>% 
+  dplyr::select(Crop, Land_Cover)
+
+Crops_not_attractive_bb_sol <- pol_attractiveness %>% 
+  left_join(pol_attc_land_use) %>% 
+  filter(Bumble.Bees == "-" | Solitary.Bees == '-') %>% 
+  dplyr::select(Crop, Land_Cover)
+
 crop_categories <- read.csv("raw_data/crops/Categorization_Code_Land_Cover.txt") %>%
-  mutate(Categorization_Code = as.numeric(Categorization_Code)) %>%
-  mutate(cover_type = case_when(Categorization_Code == 0 ~ "Background", 
+  mutate(Categorization_Code = as.numeric(Categorization_Code)) %>% 
+  mutate(cover_type = case_when(Categorization_Code == 0 ~ "Background", ### using the original categorization
                                 Categorization_Code %in% 1:60  ~ "Crop",
                                 Categorization_Code %in% 61:65  ~ "Non Crop",
                                 Categorization_Code %in% 66:80  ~ "Crop",
                                 Categorization_Code %in% 81:109  ~ "Other",
                                 Categorization_Code %in% 110:195  ~ "NLCD",
                                 Categorization_Code %in% 195:255  ~ "Crop")) %>% 
-  mutate(non_animal_pollinated = str_detect(Land_Cover, "Corn|Wheat|Wht|Rice|Soybean|Sorghum|Barley|Oat")) %>% 
-  mutate(non_animal_pollinated = ifelse(non_animal_pollinated == TRUE & str_detect(Land_Cover, "Cotton|Lettuce"), "HALF", non_animal_pollinated))
+  ## general appraoch for non-animal pollinated crops
+  mutate(non_animal_pollinated_orig = str_detect(Land_Cover, "Corn|Wheat|Wht|Rice|Soybean|Sorghum|Barley|Oat")) %>% 
+  mutate(non_animal_pollinated_orig = ifelse(non_animal_pollinated_orig == TRUE & str_detect(Land_Cover, "Cotton|Lettuce"), "HALF", non_animal_pollinated_orig)) %>% 
+  ### using the crops that do not use managed pollinators 
+  mutate(crops_do_not_use_managed_bees = ifelse(Land_Cover %in% Crops_not_using_managed_bees$Land_Cover, TRUE, FALSE)) %>%
+  mutate(crops_do_not_use_managed_bees = ifelse(str_detect(Land_Cover, "Dbl Crop Lettuce/Cantaloupe"), "HALF", crops_do_not_use_managed_bees)) %>% 
+  ### crops that do not require pollination 
+  mutate(crops_not_require_pol = ifelse(Land_Cover %in% Crops_not_requiring_pollination$Land_Cover, TRUE, FALSE)) %>% 
+  mutate(crops_not_require_pol = ifelse(str_detect(Land_Cover, "Dbl Crop Lettuce/Cantaloupe"), "HALF", crops_not_require_pol))  %>% 
+  ### crops that are not attractive to all pollinator categories 
+  mutate(crops_not_attractive_all = ifelse(Land_Cover %in% Crops_not_attractive_all$Land_Cover, TRUE, FALSE)) %>% 
+  mutate(crops_not_attractive_all = ifelse(Land_Cover %in% c("Dbl Crop WinWht/Soybeans", "Dbl Crop Lettuce/Durum Wht", "Dbl Crop Barley/Sorghum",
+                                                             "Dbl Crop WinWht/Corn", "Dbl Crop Lettuce/Barley", "Dbl Crop WinWht/Sorghum", 
+                                                             "Dbl Crop Oats/Corn", "Dbl Crop Durum Wht/Sorghum", "Dbl Crop Barley/Corn",
+                                                             "Dbl Crop WinWht/Cotton", "Dbl Crop Soybeans/Oats", "Dbl Crop Barley/Soybeans",
+                                                             "Dbl Crop Triticale/Corn"), "HALF", crops_not_attractive_all)) %>% 
+  ### crops that are not attractive to bbees or solitary categories 
+  mutate(crops_not_attractive_bb_sol = ifelse(Land_Cover %in% Crops_not_attractive_bb_sol$Land_Cover, TRUE, FALSE)) %>% 
+  mutate(crops_not_attractive_bb_sol = ifelse(Land_Cover %in% c("Dbl Crop WinWht/Soybeans", "Dbl Crop WinWht/Corn", "Dbl Crop Oats/Corn",
+                                                             "Dbl Crop Triticale/Corn", "Dbl Crop Lettuce/Durum Wht", "Dbl Crop Lettuce/Barley",
+                                                             "Dbl Crop Durum Wht/Sorghum", "Dbl Crop Barley/Sorghum", "Dbl Crop WinWht/Sorghum",
+                                                             "Dbl Crop Barley/Corn", "Dbl Crop WinWht/Cotton",
+                                                             "Dbl Crop Soybeans/Oats", "Dbl Crop Barley/Soybeans"), "HALF", crops_not_attractive_bb_sol))
+  
+  
 
 region_agriculture_all <- agriculture_all_year %>%
   mutate(crop_cover_site = as.numeric(as.character(crop_cover_site))) %>%
   left_join(crop_categories, by = c("crop_cover_site" = "Categorization_Code")) %>%
-  left_join(region_df) %>%
   mutate(site = paste0("s_", state_county)) %>% 
-  dplyr::select(Land_Cover, Freq, region_collapsed, site, cover_type, crop_cover_site, non_animal_pollinated)
+  dplyr::select(Land_Cover, Freq, site, cover_type, crop_cover_site, non_animal_pollinated_orig:crops_not_attractive_bb_sol)
 
 saveRDS(region_agriculture_all, 'clean_data/agriculture/crops_county_animal.rds')
 
 
-
-## crop richness in each county 
-region_agriculture_all %>%
-  filter(cover_type == 'Crop') %>%
-  count(site, Land_Cover) %>%
-  count(site)
-
-## crop richness in each region
-
-region_agriculture_all %>%
-  filter(cover_type == 'Crop') %>%
-  count(region_collapsed, Land_Cover)
-
-region_agriculture_all %>%
-  filter(cover_type == 'Crop') %>%
-  count(site) %>%
-  left_join(region_df) %>% 
-  ggplot(aes(x = region_collapsed, y = n)) +
-  geom_boxplot() +
-  ylab('Distribution of number of crops per county')
-
-region_agriculture_all %>%
-  filter(cover_type == 'Crop') %>%
-  count(region_collapsed, Land_Cover) %>%
-  count(region_collapsed)
-
-
-## crop diversity
-
-library(vegan)
-
-region_agriculture_all %>%
-  filter(cover_type == 'Crop') %>%
-  group_by(site, region_collapsed) %>%
-  summarise(Shannon = diversity(Freq, index = 'shannon')) %>%
-  group_by(region_collapsed) %>%
-  summarise(mean(Shannon))
-
-## plot crop diversity
-
-region_agriculture_all %>%
-  filter(cover_type == 'Crop') %>%
-  group_by(site, region_collapsed) %>%
-  summarise(Shannon = diversity(Freq, index = 'shannon')) %>%
-  ggplot(aes(x = region_collapsed, y = Shannon)) +
-  geom_boxplot() 
-
-
-## crop evenness
-
-region_agriculture_all %>%
-  filter(cover_type == 'Crop') %>%
-  group_by(site, region_collapsed) %>%
-  summarise(evenness = diversity(Freq, index = 'invsimpson')) %>%
-  group_by(region_collapsed) %>%
-  summarise(mean(evenness))
-
-### percentage of crops that is not animal pollinated
-
-##corn, wheat, rice, soybean and sorghum
-
-animal_pol <- region_agriculture_all %>%
-  filter(cover_type == 'Crop') %>% 
-  mutate(animal_pollinated = str_detect(Land_Cover, "Corn|Wheat|Wht|Rice|Soybean|Sorghum")) %>% 
-  group_by(site, animal_pollinated) %>% 
-  summarise(freq_an = sum(Freq))
-  
-
-total <- region_agriculture_all %>%
-  filter(cover_type == 'Crop') %>% 
-  mutate(animal_pollinated = str_detect(Land_Cover, "Corn|Wheat|Wht|Rice|Soybean|Sorghum")) %>% 
-  group_by(site) %>% 
-  summarise(freq_all = sum(Freq))
-
-saveRDS(total, "clean_data/agriculture/crop_cover_county.rds")
-
-animal_polinated_region <- animal_pol %>% 
-  left_join(total) %>% 
-  mutate(percentage = freq_an/freq_all) %>% 
-  dplyr::select(site, animal_pollinated, percentage) %>% 
-  filter(animal_pollinated == FALSE) %>% 
-  left_join(region_df)
-  
-
-animal_polinated_region %>% 
-  ggplot(aes(x = region_collapsed, y = percentage)) +
-  geom_boxplot() +
-  ylab('Percentage of crops that are animal pollinated')
-
-
-library(emmeans)
-my.mod      <- glm(percentage~region_collapsed, data=animal_polinated_region, 
-                   family=binomial(link = 'logit'))
-summary(my.mod)
-em <- emmeans(my.mod, "region_collapsed")
-contrast(em, "pairwise", adjust = "Tukey")
-
-### crop richness for animal pollinated crops
-
-crop_richness_animal_pol <- region_agriculture_all %>%
-  filter(cover_type == 'Crop') %>% 
-  mutate(non_animal_pollinated = str_detect(Land_Cover, "Corn|Wheat|Wht|Rice|Soybean|Sorghum")) %>% 
-  filter(non_animal_pollinated == FALSE) %>%
-  count(site) %>%
-  left_join(region_df) 
-
-crop_richness_animal_pol %>% 
-  ggplot(aes(x = region_collapsed, y = n)) +
-  geom_boxplot() +
-  ylab('Distribution of number of crops per county')
-
-
-library(emmeans)
-my.mod      <- glm(n~region_collapsed, data=crop_richness_animal_pol, 
-                   family=poisson(link = 'log'))
-summary(my.mod)
-em <- emmeans(my.mod, "region_collapsed")
-contrast(em, "pairwise", adjust = "Tukey")
-
-
-
-region_agriculture_all <- readRDS('clean_data/agriculture/crops_county_animal.rds')
-
-Total_county_area <- region_agriculture_all %>% 
-  group_by(site) %>% 
-  summarise(total_area = sum(Freq))
-
-Total_animal_pollinated <- region_agriculture_all %>% 
-  filter(cover_type == 'Crop') %>% 
-  filter(non_animal_pollinated %in% c("FALSE", "HALF")) %>% 
-  group_by(site) %>% 
-  summarise(total_ani_pollinated = sum(Freq))
-
-frac_animal_pollinated_all <- Total_county_area %>% 
-  left_join(Total_animal_pollinated) %>% 
-  mutate(county_animal_pol = total_ani_pollinated/total_area)
-
-county_animal_all <- frac_animal_pollinated_all %>% 
-  dplyr::select(site, county_animal_pol) %>% 
-  mutate(county_animal_log = log(county_animal_pol + 0.000001)) 
-
-
-
-
-
-county_animal_all
-
-
-region_df <- c("Fruitful_Rim", "Central", "Northern_Great_Plains", "Basin_and_Range", "Northern_Crescent", "South_East")
-
-modelled_sites <- list()
-  
-for(region in region_df){
-  
-  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_both_pest_area_1995_2015_ALL_",region,"FALSE.rds"))
-
-  modelled_sites[[region]] <- data.frame(site = my.data[[4]], region = region)
-}
-
-
-
-county_animal_all_region <- county_animal_all %>% 
-  left_join(map_df(modelled_sites, ~as.data.frame(.x))) %>% 
-  filter(!is.na(region))
-
-county_animal_all_region %>% 
-  ggplot(aes(x = county_animal_log)) +
-  geom_histogram() +
-  facet_wrap(~region, scales = 'free_y') +
-  theme_cowplot()
-
-county_animal_all_region %>% 
-  ggplot(aes(x = county_animal_pol)) +
-  geom_histogram() +
-  facet_wrap(~region, scales = 'free_y') +
-  theme_cowplot()
-
-
-region_modelled <- region_agriculture_all %>% 
-  left_join(map_df(modelled_sites, ~as.data.frame(.x))) %>% 
-  filter(!is.na(region)) %>% 
-  filter(cover_type == 'Crop') %>% 
-  mutate(land_cover_new = case_when(str_detect(Land_Cover, "Corn|Soy|Cotton") ~ "GM",
-                                    TRUE ~ "Other"))
-
-
-ind_crop_region <- region_modelled %>% 
-  group_by(region, land_cover_new) %>% 
-  summarise(ind_crop = sum(Freq))
-
-total_crop_region <- region_modelled %>% 
-  group_by(region) %>% 
-  summarise(total_crop = sum(Freq))
-
-ind_crop_percent <- ind_crop_region %>% 
-  left_join(total_crop_region) %>% 
-  mutate(percent_crop_region = ind_crop/total_crop) 
-
-ind_crop_percent %>% 
-  ggplot(aes(x = region, y = percent_crop_region, fill = land_cover_new)) +
-  geom_bar(stat = 'identity')

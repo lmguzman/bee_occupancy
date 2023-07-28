@@ -10,150 +10,7 @@ library(transformr)
 library(gifski)
 library(gganimate)
 
-## temperature
-year_range <- c(1995, 2015)
-
-climate_raw <- readRDS(paste0("clean_data/climate/climate_counties.rds"))
-
-climate <- climate_raw %>% 
-  map_df(~as.data.frame(.x)) %>% 
-  filter(year >= year_range[1] & year <= year_range[2])
-
-## prepare temperature ### 
-
-climate_temp <- climate %>%
-  #mutate(site = paste0("s", str_pad(str_remove(site,"s"), width = 3, pad = "0", side = 'left'))) %>%
-  mutate(site = paste0("s_", state_county)) %>% 
-  filter(variable == 'tmax' & month %in% c(7,8)) %>% 
-  group_by(site, year) %>% 
-  dplyr::summarise(max_t_year = max(values, na.rm = TRUE)/10) %>% 
-  mutate(year = paste0("yr", year)) %>%
-  filter(!is.infinite(max_t_year), !is.na(max_t_year)) %>% 
-  ungroup() %>% 
-  mutate(scaled_p = scale(max_t_year)) 
-
-
-max_temperature <- climate %>%
-  #mutate(site = paste0("s", str_pad(str_remove(site,"s"), width = 3, pad = "0", side = 'left'))) %>%
-  mutate(site = paste0("s_", state_county)) %>% 
-  filter(variable == 'tmax' & month %in% c(7,8)) %>% 
-  group_by(site, year) %>% 
-  dplyr::summarise(max_t_year = max(values, na.rm = TRUE)/10) %>% 
-  mutate(year = paste0("yr", year)) %>%
-  filter(!is.infinite(max_t_year), !is.na(max_t_year))
-
-## load regions and sites
-
-region_df <- readRDS("clean_data/sites/site_counties_region.rds")
-
-counties <- readRDS("clean_data/sites/sites_counties.RDS") %>% 
-  mutate(site = paste0("s_", state_county)) 
-
-county_temperature <- counties %>% 
-  full_join(max_temperature) %>% 
-  mutate(year = str_remove(year, "yr"))
-
-county_temperature_scaled <- counties %>% 
-  full_join(climate_temp) %>% 
-  mutate(year = str_remove(year, "yr"))
-
-for(yr in seq(1995, 2015, 3)){
- 
-  ct_yr_temperature <- county_temperature_scaled %>% 
-    filter(year %in% yr)
-  
-  temperature_max <- ggplot() +
-    geom_sf(data = ct_yr_temperature, aes(fill = scaled_p), colour = 'black', size = 0.1) +
-    ggtitle(str_remove(unique(ct_yr_temperature$year), "yr")) +
-    theme_cowplot() +
-    scale_fill_viridis(name = "Maximum \n Temperature", option = 'turbo') +
-    theme(axis.title=element_blank(),
-          axis.text=element_blank(),
-          axis.ticks=element_blank(), 
-          axis.line = element_blank())
-  
-  temperature_max
-    
-  ggsave(temperature_max, filename = paste0("plots/environment/temperature/", yr, "_scaled.jpeg"))
-   
-}
-
-## animate 
-
-
-temperature_all <- ggplot(data = county_temperature) +
-  geom_sf(aes(fill = max_t_year), colour = 'black', size = 0.1) +
-  theme_cowplot() +
-  scale_fill_viridis(name = "Maximum \n Temperature", option = 'turbo')  +
-  theme(axis.title=element_blank(),
-        axis.text=element_blank(),
-        axis.ticks=element_blank(), 
-        axis.line = element_blank())
-
-temp_animation <- temperature_all +
-  transition_states(year, transition_length = 2, state_length = 1) +
-  labs(title = "{closest_state}") 
-
-animate(temp_animation, height = 500, width = 800)
-
-anim_save("plots/environment/animations/temperature.gif")
-
-
-##### precipitation #####
-
-## prepare temperature ### 
-
-climate_prec <- climate %>% 
-  #mutate(site = paste0("s", str_pad(str_remove(site,"s"), width = 3, pad = "0", side = 'left'))) %>% 
-  mutate(site = paste0("s_", state_county)) %>% 
-  filter(variable == 'prec') %>% 
-  group_by(site, year) %>% 
-  summarise(mean_prec_year = sum(values, na.rm = TRUE)) %>% 
-  mutate(year = paste0("yr", year)) %>%
-  filter(!is.infinite(mean_prec_year), !is.na(mean_prec_year)) %>% 
-  ungroup()
-
-county_precipitation <- counties %>% 
-  full_join(climate_prec) %>% 
-  mutate(year = str_remove(year, "yr"))
-
-for(yr in seq(1995, 2015, 3)){
-  
-  ct_yr_prec <- county_precipitation %>% 
-    filter(year %in% yr)
-  
-  prec_plot <- ggplot() +
-    geom_sf(data = ct_yr_prec, aes(fill = mean_prec_year), colour = 'black', size = 0.1) +
-    ggtitle(str_remove(unique(ct_yr_prec$year), "yr")) +
-    theme_cowplot() +
-    scale_fill_viridis(name = "Maximum \n Temperature", option = 'viridis', direction = -1) 
-  
-  ggsave(prec_plot, filename = paste0("plots/environment/precipitation/", yr, "_sum.jpeg"))
-  
-}
-
-
-prec_all <- ggplot(data = county_precipitation) +
-  geom_sf(aes(fill = mean_prec_year), colour = 'black', size = 0.1) +
-  theme_cowplot() +
-  scale_fill_viridis(name = "Mean Annual Precipitation", option = 'viridis', direction = -1)  +
-  theme(axis.title=element_blank(),
-        axis.text=element_blank(),
-        axis.ticks=element_blank(), 
-        axis.line = element_blank())
-
-prec_animation <- prec_all +
-  transition_states(year, transition_length = 2, state_length = 1) +
-  labs(title = "{closest_state}") 
-
-animate(prec_animation, height = 500, width = 800)
-
-anim_save("plots/environment/animations/precipitation.gif")
-
-
-
-##### agriculture #####
-
+##### agriculture all #####
 
 agriculture <- readRDS(paste0("clean_data/agriculture/agriculture_county.rds"))
 
@@ -167,45 +24,28 @@ agriculture_mat <- agriculture %>%
 county_agriculture <- counties %>% 
   full_join(agriculture_mat)
 
-for(yr in unique(county_precipitation$year)){
+  yr <- 2006
   
   ct_yr_ag <- county_agriculture %>% 
     filter(year %in% yr)
   
   ag_plot <- ggplot() +
     geom_sf(data = ct_yr_ag, aes(fill = percent_agriculture), colour = 'black', size = 0.1) +
-    ggtitle(unique(ct_yr_ag$year)) +
     theme_cowplot() +
-    scale_fill_viridis(name = "Percent Agriculture", option = 'viridis', direction = -1)  +
-    theme(axis.title=element_blank(),
+    scale_fill_viridis(name = "Percent of the county \n that is a crop", option = 'viridis', direction = -1)  +
+    theme(legend.position = 'bottom',
+          axis.title=element_blank(),
           axis.text=element_blank(),
           axis.ticks=element_blank(), 
-          axis.line = element_blank())
+          axis.line = element_blank(),
+          legend.text = element_text(size = 11))
   
   ggsave( ag_plot, filename = paste0("plots/environment/agriculture/", yr, ".jpeg"))
+  ggsave( ag_plot, filename = paste0("plots/environment/agriculture/", yr, ".pdf"), width = 10)
   
-}
-
-agriculture_all <- ggplot(data = county_agriculture) +
-  geom_sf(aes(fill = percent_agriculture), colour = 'black', size = 0.1) +
-  theme_cowplot() +
-  scale_fill_viridis(name = "Percent Agriculture", option = 'viridis', direction = -1)  +
-  theme(axis.title=element_blank(),
-        axis.text=element_blank(),
-        axis.ticks=element_blank(), 
-        axis.line = element_blank())
 
 
-agri_animation <- agriculture_all +
-  transition_states(year, transition_length = 2, state_length = 1) +
-  labs(title = "{closest_state}") 
-
-animate(agri_animation, height = 500, width = 800)
-
-anim_save("plots/environment/animations/agriculture.gif")
-
-
-##### neonic distribution #####
+##### pesticide use distribution #####
 
 year_range <- c(1995, 2015)
 
@@ -220,10 +60,6 @@ counties <- readRDS("clean_data/sites/sites_counties.RDS") %>%
 neonic_raw %>% 
   filter(COMPOUND == "IMIDACLOPRID") %>% 
   mutate(site = paste0("s_", state_county))
-
-
-
-## fill in gaps for sites where no pesticide use detected 
 
 year_site <- expand.grid(YEAR = year_range[1]:year_range[2], state_county = counties$state_county,
                          COMPOUND = unique(neonic_raw$COMPOUND)) %>% 
@@ -247,115 +83,6 @@ county_neonic_all <- counties %>%
 
 county_neonic_summed <- counties %>% 
   full_join(neonic_sum_log)
-
-#pest_all_scaled <- (pest_all- mean(pest_all))/sd(pest_all)
-
-
-## compare for 1 year
-
-#yr <- 2005
-
-ct_yr_nall <- county_neonic_all %>% 
-  filter(YEAR %in% yr)
-  #filter(COMPOUND != "Dinotefuran")
-
-neonic_all_plot <- ggplot() +
-  geom_sf(data = ct_yr_nall, aes(fill = pest_site), colour = 'black', size = 0.1) +
-  ggtitle(unique(ct_yr_nall$YEAR)) +
-  theme_cowplot() +
-  facet_wrap(~COMPOUND) +
-  scale_fill_viridis(name = "Pesticide Use", option = 'viridis', direction = -1)  +
-  theme(axis.title=element_blank(),
-        axis.text=element_blank(),
-        axis.ticks=element_blank(), 
-        axis.line = element_blank())
-
-
-ggsave(neonic_all_plot, filename = "plots/environment/pesticide/2005_raw.jpeg")
-
-
-neonic_all_ld50 <- ggplot() +
-  geom_sf(data = ct_yr_nall, aes(fill = pest_site_ld50), colour = 'black', size = 0.1) +
-  ggtitle(unique(ct_yr_nall$YEAR)) +
-  theme_cowplot() +
-  facet_wrap(~COMPOUND) +
-  scale_fill_viridis(name = "Pesticide Use LD50", option = 'viridis', direction = -1)  +
-  theme(axis.title=element_blank(),
-        axis.text=element_blank(),
-        axis.ticks=element_blank(), 
-        axis.line = element_blank())
-
-
-ggsave(neonic_all_ld50, filename = "plots/environment/pesticide/2005_LD50.jpeg")
-
-
-county_neonic_summed
-
-ct_yr_nsum <- county_neonic_summed %>% 
-  filter(YEAR %in% yr) 
-
-neonic_all_summed <- ggplot() +
-  geom_sf(data = ct_yr_nsum, aes(fill = summed_pesticides), colour = 'black', size = 0.1) +
-  ggtitle(unique(ct_yr_nall$YEAR)) +
-  theme_cowplot() +
-  scale_fill_viridis(name = "Pesticide Use Summed", option = 'viridis', direction = -1)  +
-  theme(axis.title=element_blank(),
-        axis.text=element_blank(),
-        axis.ticks=element_blank(), 
-        axis.line = element_blank())
-
-
-ggsave(neonic_all_summed, filename = "plots/environment/pesticide/2005_summed.jpeg")
-
-neonic_all_log <- ggplot() +
-  geom_sf(data = ct_yr_nsum, aes(fill = loged_summed_pest), colour = 'black', size = 0.1) +
-  ggtitle(unique(ct_yr_nall$YEAR)) +
-  theme_cowplot() +
-  scale_fill_viridis(name = "Pesticide Use Logged", option = 'viridis', direction = -1)  +
-  theme(axis.title=element_blank(),
-        axis.text=element_blank(),
-        axis.ticks=element_blank(), 
-        axis.line = element_blank())
-
-
-ggsave(neonic_all_log, filename = "plots/environment/pesticide/2005_logged.jpeg")
-
-
-
-for(yr in unique(county_neonic_summed$YEAR)){
-  
-  ct_yr_nsum <- county_neonic_summed %>% 
-    filter(YEAR %in% yr)
-  
-  neonic_plot <- ggplot() +
-    geom_sf(data = ct_yr_nsum, aes(fill = loged_summed_pest), colour = 'black', size = 0.1) +
-    ggtitle(unique(ct_yr_nsum$YEAR)) +
-    theme_cowplot() +
-    scale_fill_viridis(name = "Pesticide Use Logged", option = 'viridis', direction = -1) 
-  
-  ggsave(neonic_plot, filename = paste0("plots/environment/pesticide/", yr, "_logged.jpeg"))
-  
-}
-
-county_neonic_summed_all <- county_neonic_summed %>% st_sf()
-
-neonic_plot_all <- ggplot(data = county_neonic_summed_all) +
-  geom_sf(aes(fill = loged_summed_pest), colour = 'black', size = 0.1) +
-  theme_cowplot() +
-  scale_fill_viridis(name = "Pesticide Use Logged", option = 'viridis', direction = -1)  +
-  theme(axis.title=element_blank(),
-        axis.text=element_blank(),
-        axis.ticks=element_blank(), 
-        axis.line = element_blank()) 
-
-neonic_animation <- neonic_plot_all +
-  transition_states(YEAR, transition_length = 2, state_length = 1) +
-  labs(title = "{closest_state}") 
-
-animate(neonic_animation, height = 500, width = 800)
-
-anim_save("plots/environment/animations/neonic.gif")
-
 
 ### neonic 1995, 2013 and region ###
 
@@ -421,24 +148,7 @@ ggsave(neonic_region, filename = "plots/environment/pesticide/neonic_region_logg
 ggsave(neonic_region, filename = "plots/environment/pesticide/neonic_region_logged.pdf")
 
 
-
-ct_yr_nsum_region <- ct_yr_nsum %>% 
-  left_join(region_df)
-
-neonic_region_split <- ggplot() +
-  geom_sf(data = ct_yr_nsum_region, aes(fill = loged_summed_pest), colour = 'grey', size = 0.1) +
-  theme_cowplot() +
-  scale_fill_viridis(name = "Pesticide Use 2013 \n (log scale)", option = 'viridis', direction = -1) +
-  theme(legend.position = "bottom", 
-        axis.text = element_blank(), 
-        axis.ticks = element_blank(), 
-        axis.line = element_blank())  +
-  facet_wrap(~region)
-
-ggsave(neonic_region_split, filename = "plots/environment/pesticide/neonic_region_split.pdf")
-
-
-### plot regions
+######## plot regions. #########
 
 region_df <- readRDS("clean_data/sites/site_counties_agriregion.rds") %>% 
   mutate(region_collapsed = case_when(region %in% c("Southern Seaboard", "Eastern Uplands",
@@ -465,114 +175,6 @@ region_map <- ggplot(data = counties_region) +
 
 ggsave(region_map, filename = "plots/environment/regions.jpeg")
 ggsave(region_map, filename = "plots/environment/regions.pdf")
-
-
-
-
-
-#### agriregions - species presence 
-
-
-
-region_df <- readRDS("clean_data/sites/site_counties_agriregion.rds") %>% 
-  mutate(region_collapsed = case_when(region %in% c("Southern Seaboard", "Eastern Uplands",
-                                                    "Mississippi Portal") ~ "South East",
-                                      region %in% c("Heartland", "Prairie Gateway") ~ "Central",
-                                      TRUE ~ region))
-
-counties <- readRDS("clean_data/sites/sites_counties.RDS")
-
-regions <- str_replace_all(unique(region_df$region_collapsed), " ", "_")
-
-sites_modelled <- list()
-
-
-
-all_region_modelled <- 
-  counties %>% 
-  left_join(data.frame(state_county = str_remove(my.data$site, "s_"), 
-                       modelled = 1, 
-                       region = str_replace_all(r, "_", " "))) %>% 
-  left_join(region_df)
-  
-
-ggplot() +
-  geom_sf(data = all_region_modelled, aes(fill = modelled))
-
-### 
-
-for(r in regions){
-  
-  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_agriregion_1995_2015_ALL_",r,"FALSE.rds"))
-  
-  my.data <-readRDS("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_1995_2015_ALL_CentralFALSE.rds")
-  
-  sites_modelled[[r]] <- data.frame(state_county = str_remove(my.data$site, "s_"), 
-                                    modelled = 1, 
-                                    region = str_replace_all(r, "_", " "))
-  
-}
-
-all_sites_modelled <- sites_modelled %>% 
-  map_df(~as.data.frame(.x))
-
-
-ct_yr_nsum_model <- ct_yr_nsum %>% 
-  left_join(all_sites_modelled) %>% 
-  mutate(log_summ_modelled = loged_summed_pest*modelled)
-
-counties_region <- counties %>% 
-  left_join(region_df) 
-
-counties_split <- split(counties_region, counties_region$region)
-
-regions_combined <- lapply(counties_split, st_union)
-
-neonic_region <- ggplot() +
-  geom_sf(data = ct_yr_nsum_model, aes(fill = log_summ_modelled), colour = 'grey', size = 0.1) +
-  theme_cowplot() +
-  scale_fill_viridis(name = "Pesticide Use 2013 \n (log scale)", option = 'viridis', direction = -1) +
-  theme(legend.position = "bottom", 
-        axis.text = element_blank(), 
-        axis.ticks = element_blank(), 
-        axis.line = element_blank()) +
-  geom_sf(data = regions_combined$`Basin and Range`, fill = "transparent", colour = 'black', size = 1) +
-  geom_sf(data = regions_combined$`Eastern Uplands`, fill = "transparent", colour = 'black', size = 1) +
-  geom_sf(data = regions_combined$`Fruitful Rim`,fill = "transparent",  colour = 'black', size = 1) +
-  geom_sf(data = regions_combined$Heartland, fill = "transparent", colour = 'black', size = 1) +
-  geom_sf(data = regions_combined$`Mississippi Portal`,fill = "transparent",  colour = 'black', size = 1) +
-  geom_sf(data = regions_combined$`Northern Crescent`,fill = "transparent",  colour = 'black', size = 1) +
-  geom_sf(data = regions_combined$`Northern Great Plains`,fill = "transparent",  colour = 'black', size = 1) +
-  geom_sf(data = regions_combined$`Prairie Gateway`,fill = "transparent",  colour = 'black', size = 1) +
-  geom_sf(data = regions_combined$`Southern Seaboard`,fill = "transparent",  colour = 'black', size = 1) 
-  
-ggsave(neonic_region, filename = "plots/environment/pesticide/neonic_agriregion_logged.jpeg")
-
-
-
-
-### other plot of regions###
-
-regions <- unique(ct_yr_nsum_model$region)
-
-for(r in regions){
-  
-  ct_yr_nsum_model_regional <- ct_yr_nsum_model %>% 
-    mutate(log_summ_modelled = ifelse(!region %in% r, NA, log_summ_modelled))
-  
-  neonic_region <- ggplot() +
-    geom_sf(data = ct_yr_nsum_model_regional, aes(fill = log_summ_modelled), colour = 'grey', size = 0.1) +
-    theme_cowplot() +
-    scale_fill_viridis(name = "Pesticide Use 2013 \n (log scale)", option = 'viridis', direction = -1) +
-    theme(legend.position = "bottom", 
-          axis.text = element_blank(), 
-          axis.ticks = element_blank(), 
-          axis.line = element_blank()) +
-    geom_sf(data = regions_combined[[r]],fill = "transparent",  colour = 'black', size = 2) +
-    ggtitle(r)
-  
-  ggsave(neonic_region, filename = paste0("plots/environment/pesticide/neonic_agriregion_logged_",str_replace(r, " ", "_"),".jpeg"))
-}
 
 
 ###### blacked out regions ####
@@ -612,8 +214,7 @@ for(r in regions){
 }
 
 
-
-##### Fraction of animal pollinated agriculture for the counties that were modelled####
+##### Fraction of animal pollinated agriculture for the counties that were modelled ####
 
 files_results <- list.files("clean_data/data_prepared/", full.names = TRUE)
 
@@ -650,14 +251,139 @@ frac_an_pol_all_df <- frac_an_pol_all %>%
   mutate(region = str_remove_all(region, "ALL_|FALSE"))
 
 
-agriculture_all_df %>% 
-  ggplot(aes(x = region, y = percent_county_agriculture)) +
+agriculture_distribution <- agriculture_all_df %>% 
+  mutate(region_nice = str_replace_all(region, "\\_", " ")) %>% 
+  ggplot(aes(x = region_nice, y = percent_county_agriculture)) +
   geom_boxplot() +
-  theme_cowplot()
+  theme_cowplot() + 
+  ylab("Percent of the county \n that is agriculture") +
+  xlab("")
+
+apa_distribution <- frac_an_pol_all_df %>% 
+  mutate(region_nice = str_replace_all(region, "\\_", " ")) %>% 
+  ggplot(aes(x = region_nice, y = percent_agriculture_animal_pol)) +
+  geom_boxplot() +
+  theme_cowplot() +
+  ylab("Percent of the agriculture that \n is animal pollinated agriculture") +
+  xlab("") 
+
+ag_distribution_region <- plot_grid(agriculture_distribution, apa_distribution, nrow = 2, labels = c("A.", "B."))
+
+ggsave(ag_distribution_region, file = 'plots/ag_distribution.pdf', height = 9)
 
 
-frac_an_pol_all_df %>% 
-  ggplot(aes(x = region, y = percent_agriculture_animal_pol)) +
-  geom_boxplot() +
-  theme_cowplot()
+
+
+
+
+
+
+
+############# MAIN FIGURE 1 ##############
+
+######### summed pesticide load ########
+
+environment <- readRDS("clean_data/data_prepared/environment_counties_1995_2015.rds")
+
+counties <- readRDS("clean_data/sites/sites_counties.RDS") %>% 
+  mutate(site = paste0('s_', state_county))
+
+pest_both <- environment$both_mat_area[,"yr2013", drop = FALSE] %>% 
+  as.data.frame() %>% 
+  tibble::rownames_to_column("site")
+
+pesticide_use_combined <- counties %>% 
+  left_join(pest_both) %>% 
+  ggplot() +
+  geom_sf(aes(fill = yr2013)) +
+  scale_fill_viridis(name = "Pesticide Use (neonicotinoids \n and pyrethroids)", option = 'viridis') +
+  theme_cowplot() +
+  theme(legend.position = 'bottom',
+        axis.title=element_blank(),
+        axis.text=element_blank(),
+        axis.ticks=element_blank(), 
+        axis.line = element_blank(),
+        legend.text = element_text(size = 11))
+
+ggsave(pesticide_use_combined, filename = "plots/environment/pesticide_use.pdf", width = 10)
+
+
+######## percent of the county that is animal pollinated agriculture #######
+
+region_agriculture_all <- readRDS("clean_data/agriculture/crops_county_animal.rds")
+
+Total_county_area <- region_agriculture_all %>% 
+  group_by(site) %>% 
+  summarise(total_area = sum(Freq))
+
+Total_animal_pollinated <- region_agriculture_all %>% 
+  filter(cover_type == 'Crop') %>% 
+  filter(non_animal_pollinated %in% c("FALSE", "HALF")) %>% 
+  group_by(site) %>% 
+  summarise(total_ani_pollinated = sum(Freq))
+
+frac_animal_pollinated_all <- Total_county_area %>% 
+  left_join(Total_animal_pollinated) %>% 
+  mutate(county_animal_pol = total_ani_pollinated/total_area) 
+
+counties <- readRDS("clean_data/sites/sites_counties.RDS")
+
+frac_animal_pollinated_all_sh <- counties %>% 
+  mutate(site = paste0("s_", state_county)) %>% 
+  left_join(frac_animal_pollinated_all)
+
+animal_pollinated_ag <- ggplot() +
+  geom_sf(data = frac_animal_pollinated_all_sh, aes(fill = log(county_animal_pol))) +
+  theme_cowplot() +
+  scale_fill_viridis(name = "Percent of county \n that is animal pollinated \n agriculture (log)", option = 'viridis') +
+  theme(legend.position = 'bottom',
+        axis.title=element_blank(),
+        axis.text=element_blank(),
+        axis.ticks=element_blank(), 
+        axis.line = element_blank(),
+        legend.text = element_text(size = 11))
+
+ggsave(animal_pollinated_ag, file = 'plots/environment/animal_pol_ag.pdf', width = 10)
+
+
+##### honey bees #####
+
+counties <- readRDS("clean_data/sites/sites_counties.RDS")
+
+honey_bee_census <- readRDS("clean_data/honey_bees/colonies_time.rds") %>% 
+  filter(Year == 2012)
+
+honey_bee_colonies <- counties %>% 
+  full_join(honey_bee_census) %>% 
+  mutate(Value = ifelse(is.na(Value), 0, Value)) %>% 
+  ggplot() +
+  geom_sf(aes(fill = log(Value + 1))) +
+  theme_cowplot() +
+  scale_fill_viridis_c("Number of Honey\n Bee colonies (log)") +
+  theme(legend.position = 'bottom',
+        axis.title=element_blank(),
+        axis.text=element_blank(),
+        axis.ticks=element_blank(), 
+        axis.line = element_blank(),
+        legend.text = element_text(size = 11))
+
+ggsave(honey_bee_colonies, file = 'plots/environment/honey_bee_colonies.pdf', width = 10)
+
+
+##### expected bee richness #####
+
+expected_richness <- readRDS('clean_data/native_expected/expected_richness.rds')
+
+wild_bee_richness <- ggplot() +
+  geom_sf(data = expected_richness, aes(fill = expected_richnness)) +
+  theme_cowplot() +
+  scale_fill_viridis_c("Expected richness per county") +
+  theme(legend.position = 'bottom',
+        axis.title=element_blank(),
+        axis.text=element_blank(),
+        axis.ticks=element_blank(), 
+        axis.line = element_blank(),
+        legend.text = element_text(size = 9.5))
+
+ggsave(wild_bee_richness, file = 'plots/environment/wild_bee_richness.pdf', width = 10)
 
