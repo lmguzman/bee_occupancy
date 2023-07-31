@@ -1,3 +1,4 @@
+
 model.jags <- function() {
   
   ### priors
@@ -23,36 +24,49 @@ model.jags <- function() {
   }
   
   ## effect of yr on detection
-  p.yr ~ dnorm(0,0.01)
+  p.era ~ dnorm(0,0.01)
   
+  # random effect of year on initial colonization and extinction
   
-  ## species specific intercepts
-  
-  ## random effect of species on occupancy and detection
-  sigma.psi.sp   ~ dunif(0,10)
-  tau.psi.sp    <- 1/(sigma.psi.sp*sigma.psi.sp)
-  for(sp in 1:nsp) {
-    psi.sp[sp]   ~ dnorm(0, tau.psi.sp)
-  }
-  # 
-  
-  
-  
-  # species specific slopes on era
-  
-  sigma.psi.era ~ dunif(0,10)
-  tau.psi.era <- 1/(sigma.psi.era*sigma.psi.era)
+  sigma.psi.sp ~ dunif(0,10)
+  tau.psi.sp <- 1/(sigma.psi.sp*sigma.psi.sp)
   
   mu.psi.0 ~ dnorm(0,0.01)
   
-  mu.psi.yr ~ dnorm(0,0.01)
-  
-  
   for(sp in 1:nsp){
-    psi.era[sp] ~ dnorm(mu.psi.yr,tau.psi.era)
+    psi.sp[sp] ~ dnorm(0,tau.psi.sp)
   }
   
-  # calcualte occupancy 
+  ## county of animal pollinated agriculture
+
+## county of animal pollinated agriculture
+  
+  mu.psi.canag ~ dnorm(0,0.01)
+  sigma.psi.canag ~ dunif(0,10)
+  tau.psi.canag <- 1/(sigma.psi.canag*sigma.psi.canag)
+  
+  for(sp in 1:nsp){
+    psi.canag[sp] ~ dnorm(mu.psi.canag, tau.psi.canag)
+  }
+
+ ### honey bee colonies 
+ 
+  mu.psi.col ~ dnorm(0,0.01)
+  sigma.psi.col ~ dunif(0,10)
+  tau.psi.col <- 1/(sigma.psi.col*sigma.psi.col)
+  
+  for(sp in 1:nsp){
+    psi.col[sp] ~ dnorm(mu.psi.col, tau.psi.col)
+  }
+  
+  
+  
+  # area
+  
+  psi.area ~ dnorm(0,0.01)
+
+  
+  #####
   
   for(sp in 1:nsp) {
     for(yr in 1:nyr) {
@@ -61,14 +75,15 @@ model.jags <- function() {
         logit(psi[site,yr,sp]) <-
           mu.psi.0 +
           psi.sp[sp] +
-          psi.era[sp]*yr 
-        
+          psi.area*area[site] +
+          psi.col[sp]*honeybeetime[site,yr] +           
+          psi.canag[sp]*countanimalmb[site] 
         # 
         ## detection
         logit(p[site,yr,sp]) <-
           mu.p.0 +
-          p.yr*(yr) +
-          exp.sp[sp] +
+          p.era*yr +
+          p.sp[sp] +
           p.site[site,yr]
         
       }
@@ -99,23 +114,12 @@ model.jags <- function() {
   
 }
 get.params <- function()
-  c('p.yr',
+  c('p.era',
     'mu.p.0',
     'mu.psi.0',
-    'mu.psi.yr',
-    'psi.era',
-    'psi.sp')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    'mu.psi.col',
+    'mu.psi.canag',
+    'psi.sp',
+    'psi.col',
+    'psi.canag',
+    'psi.area')

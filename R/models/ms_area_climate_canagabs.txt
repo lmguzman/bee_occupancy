@@ -39,21 +39,11 @@ model
     for (sp in 1:nsp) {
         psi.prec[sp] ~ dnorm(mu.psi.prec, tau.psi.prec)
     }
-    sigma.psi.pest1 ~ dunif(0.00000E+00, 10)
-    tau.psi.pest1 <- 1/(sigma.psi.pest1 * sigma.psi.pest1)
-    sigma.mu.psi.pest1 ~ dunif(0.00000E+00, 10)
-    tau.mu.psi.pest1 <- 1/(sigma.mu.psi.pest1 * sigma.mu.psi.pest1)
-    for (n in 1:nnest) {
-        mu.psi.pest1[n] ~ dnorm(0.00000E+00, tau.mu.psi.pest1)
-    }
+    mu.psi.canag ~ dnorm(0.00000E+00, 0.01)
+    sigma.psi.canag ~ dunif(0.00000E+00, 10)
+    tau.psi.canag <- 1/(sigma.psi.canag * sigma.psi.canag)
     for (sp in 1:nsp) {
-        psi.pest1[sp] ~ dnorm(mu.psi.pest1[nest[sp]], tau.psi.pest1)
-    }
-    mu.psi.agric ~ dnorm(0.00000E+00, 0.01)
-    sigma.psi.agric ~ dunif(0.00000E+00, 10)
-    tau.psi.agric <- 1/(sigma.psi.agric * sigma.psi.agric)
-    for (sp in 1:nsp) {
-        psi.agric[sp] ~ dnorm(mu.psi.agric, tau.psi.agric)
+        psi.canag[sp] ~ dnorm(mu.psi.canag, tau.psi.canag)
     }
     psi.area ~ dnorm(0.00000E+00, 0.01)
     for (sp in 1:nsp) {
@@ -62,8 +52,7 @@ model
                 logit(psi[site, yr, sp]) <- mu.psi.0 + psi.sp[sp] + 
                   psi.area * area[site] + psi.tmax1[sp] * tmax[site, 
                   yr] + psi.tmax2[sp] * tmax[site, yr]^2 + psi.prec[sp] * 
-                  prec[site, yr] + psi.pest1[sp] * pesticide1[site, 
-                  yr] + psi.agric[sp] * agriculture[site, yr]
+                  prec[site, yr] + psi.canag[sp] * countanimalabs[site]
                 logit(p[site, yr, sp]) <- mu.p.0 + p.era * yr + 
                   p.sp[sp] + p.site[site, yr]
             }

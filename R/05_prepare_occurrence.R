@@ -1,12 +1,12 @@
+## Script to organize the occurrence data and join with envornmental data for model 
+
 library(dplyr)
 library(data.table)
 library(purrr)
 library(stringr)
 library(sf)
 
-## function to prepare occurrence data 
-
-prepare_occurrence <- function( year_range, family_filter, strict_filter){
+prepare_occurrence <- function(family_filter, strict_filter){
   
   ## load data
   
@@ -14,7 +14,7 @@ prepare_occurrence <- function( year_range, family_filter, strict_filter){
   
   observations_raw$site <- paste0("s_", observations_raw$state_county)
   
-  environmental_data <- readRDS(paste0("clean_data/data_prepared/environment_counties_", paste0(year_range, collapse = "_"),".rds"))
+  environmental_data <- readRDS(paste0("clean_data/data_prepared/environment_counties_1995_2015.rds"))
   
   ranges <- readRDS(paste0("clean_data/ranges/ranges_counties.rds"))
   
@@ -25,6 +25,8 @@ prepare_occurrence <- function( year_range, family_filter, strict_filter){
   ## set which counties to use
   
   region_filter <- "ALL"
+  
+  year_range <- c(1995, 2015)
   
   ## arrange area 
   
@@ -255,7 +257,7 @@ prepare_occurrence <- function( year_range, family_filter, strict_filter){
                        sp=species_presence)
   
   
-  saveRDS(all_data_env, paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_both_pest_area_county_", paste0(year_range, collapse = "_"), "_", family_filter,"_", str_replace_all(unique(region_filter), " ", "_"), strict_filter,".rds" ))
+  saveRDS(all_data_env, paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_both_pest_area_county_1995_2015_", family_filter,"_ALL", strict_filter,".rds" ))
   
 }
 
@@ -265,7 +267,7 @@ fam <- c("Andrenidae", "Apidae", "Halictidae",
          "Megachilidae", "Colletidae|Melittidae")
 
 for(f in fam){
-  prepare_occurrence( c(1995, 2015), f, FALSE)
+  prepare_occurrence(f, FALSE)
 }
 
 

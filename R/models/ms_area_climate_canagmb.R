@@ -45,13 +45,13 @@ model.jags <- function() {
   for(sp in 1:nsp){
     psi.tmax1[sp] ~ dnorm(mu.psi.tmax1, tau.psi.tmax1)
   }
-  
-  ## tmax 2
-  
+ 
+	## tmax 2
+ 
   mu.psi.tmax2 ~ dnorm(0,0.01);T(,0)
   sigma.psi.tmax2 ~ dunif(0,10)
   tau.psi.tmax2 <- 1/(sigma.psi.tmax2*sigma.psi.tmax2)
-  
+
   for(sp in 1:nsp){
     psi.tmax2[sp] ~ dnorm(mu.psi.tmax2, tau.psi.tmax2)
   }
@@ -64,33 +64,18 @@ model.jags <- function() {
   
   for(sp in 1:nsp){
     psi.prec[sp] ~ dnorm(mu.psi.prec, tau.psi.prec)
-  }
-  
-  ## Species specific slopes to each type of pesticide
-  
-  sigma.psi.pest1 ~ dunif(0,10)
-  tau.psi.pest1 <- 1/(sigma.psi.pest1*sigma.psi.pest1)
-  
-  sigma.mu.psi.pest1 ~ dunif(0,10)
-  tau.mu.psi.pest1 <- 1/(sigma.mu.psi.pest1*sigma.mu.psi.pest1)
-  
-  for(n in 1:nnest){
-    mu.psi.pest1[n] ~ dnorm(0, tau.mu.psi.pest1)
-  }
-  for(sp in 1:nsp){
-    psi.pest1[sp] ~ dnorm(mu.psi.pest1[nest[sp]], tau.psi.pest1)
-  }
-  
+  }  
+
   ## agriculture
   
-  mu.psi.agric ~ dnorm(0,0.01)
-  sigma.psi.agric ~ dunif(0,10)
-  tau.psi.agric <- 1/(sigma.psi.agric*sigma.psi.agric)
+  mu.psi.canag ~ dnorm(0,0.01)
+  sigma.psi.canag ~ dunif(0,10)
+  tau.psi.canag <- 1/(sigma.psi.canag*sigma.psi.canag)
   
   for(sp in 1:nsp){
-    psi.agric[sp] ~ dnorm(mu.psi.agric, tau.psi.agric)
+    psi.canag[sp] ~ dnorm(mu.psi.canag, tau.psi.canag)
   }
-  
+   
   # area
   
   psi.area ~ dnorm(0,0.01)
@@ -108,8 +93,7 @@ model.jags <- function() {
           psi.tmax1[sp]*tmax[site,yr] + ## warm sites have higher persistence (+)
           psi.tmax2[sp]*tmax[site,yr]^2 +
           psi.prec[sp]*prec[site,yr] + 
-          psi.pest1[sp]*pesticide1[site,yr] +
-          psi.agric[sp]*agriculture[site,yr] 
+          psi.canag[sp]*countanimalmb[site] 
         
         # 
         ## detection
@@ -153,11 +137,23 @@ get.params <- function()
     'mu.psi.tmax1',
     'mu.psi.tmax2',
     'mu.psi.prec',
-    'mu.psi.pest1',
-    'mu.psi.agric',
+    'mu.psi.canag',
     'psi.sp',
     'psi.tmax1',
     'psi.tmax2',
     'psi.prec', 
-    'psi.pest1',
-    'psi.agric')
+    'psi.canag')
+
+
+
+
+
+
+
+
+
+
+
+
+
+

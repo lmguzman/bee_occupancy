@@ -1,0 +1,66 @@
+model
+{
+    mu.p.0 ~ dnorm(0.00000E+00, 0.01)
+    sigma.p.sp ~ dunif(0.00000E+00, 10)
+    tau.p.sp <- 1/(sigma.p.sp * sigma.p.sp)
+    for (sp in 1:nsp) {
+        p.sp[sp] ~ dnorm(0.00000E+00, tau.p.sp)
+    }
+    sigma.p.site ~ dunif(0.00000E+00, 10)
+    tau.p.site <- 1/(sigma.p.site * sigma.p.site)
+    for (site in 1:nsite) {
+        for (yr in 1:nyr) {
+            p.site[site, yr] ~ dnorm(0.00000E+00, tau.p.site)
+        }
+    }
+    p.era ~ dnorm(0.00000E+00, 0.01)
+    sigma.psi.sp ~ dunif(0.00000E+00, 10)
+    tau.psi.sp <- 1/(sigma.psi.sp * sigma.psi.sp)
+    mu.psi.0 ~ dnorm(0.00000E+00, 0.01)
+    for (sp in 1:nsp) {
+        psi.sp[sp] ~ dnorm(0.00000E+00, tau.psi.sp)
+    }
+    mu.psi.canag ~ dnorm(0.00000E+00, 0.01)
+    sigma.psi.canag ~ dunif(0.00000E+00, 10)
+    tau.psi.canag <- 1/(sigma.psi.canag * sigma.psi.canag)
+    for (sp in 1:nsp) {
+        psi.canag[sp] ~ dnorm(mu.psi.canag, tau.psi.canag)
+    }
+    mu.psi.col ~ dnorm(0.00000E+00, 0.01)
+    sigma.psi.col ~ dunif(0.00000E+00, 10)
+    tau.psi.col <- 1/(sigma.psi.col * sigma.psi.col)
+    for (sp in 1:nsp) {
+        psi.col[sp] ~ dnorm(mu.psi.col, tau.psi.col)
+    }
+    mu.psi.pest1 ~ dnorm(0.00000E+00, 0.01)
+    sigma.psi.pest1 ~ dunif(0.00000E+00, 10)
+    tau.psi.pest1 <- 1/(sigma.psi.pest1 * sigma.psi.pest1)
+    for (sp in 1:nsp) {
+        psi.pest1[sp] ~ dnorm(mu.psi.pest1, tau.psi.pest1)
+    }
+    psi.area ~ dnorm(0.00000E+00, 0.01)
+    for (sp in 1:nsp) {
+        for (yr in 1:nyr) {
+            for (site in 1:nsite) {
+                logit(psi[site, yr, sp]) <- mu.psi.0 + psi.sp[sp] + 
+                  psi.area * area[site] + psi.col[sp] * honeybeetime[site, 
+                  yr] + psi.pest1[sp] * pesticidearea[site, yr] + 
+                  psi.canag[sp] * countanimal[site]
+                logit(p[site, yr, sp]) <- mu.p.0 + p.era * yr + 
+                  p.sp[sp] + p.site[site, yr]
+            }
+        }
+    }
+    for (sp in 1:nsp) {
+        for (site in 1:nsite) {
+            for (yr in 1:nyr) {
+                Z[site, yr, sp] ~ dbern(psi[site, yr, sp])
+            }
+        }
+    }
+    for (ind in 1:nind) {
+        mu.p[ind] <- Z[site[ind], yr[ind], sp[ind]] * p[site[ind], 
+            yr[ind], sp[ind]]
+        X[ind] ~ dbern(mu.p[ind])
+    }
+}

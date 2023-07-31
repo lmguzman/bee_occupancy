@@ -1,3 +1,4 @@
+
 model.jags <- function() {
   
   ### priors
@@ -37,6 +38,8 @@ model.jags <- function() {
   }
   
   ## county of animal pollinated agriculture
+
+## county of animal pollinated agriculture
   
   mu.psi.canag ~ dnorm(0,0.01)
   sigma.psi.canag ~ dunif(0,10)
@@ -45,17 +48,17 @@ model.jags <- function() {
   for(sp in 1:nsp){
     psi.canag[sp] ~ dnorm(mu.psi.canag, tau.psi.canag)
   }
-  
-  
-  ## Species specific slopes to each type of pesticide
-  
-  mu.psi.pest1 ~ dnorm(0,0.01)
-  sigma.psi.pest1 ~ dunif(0,10)
-  tau.psi.pest1 <- 1/(sigma.psi.pest1*sigma.psi.pest1)
+
+ ### honey bee colonies 
+ 
+  mu.psi.col ~ dnorm(0,0.01)
+  sigma.psi.col ~ dunif(0,10)
+  tau.psi.col <- 1/(sigma.psi.col*sigma.psi.col)
   
   for(sp in 1:nsp){
-    psi.pest1[sp] ~ dnorm(mu.psi.pest1, tau.psi.pest1)
+    psi.col[sp] ~ dnorm(mu.psi.col, tau.psi.col)
   }
+  
   
   
   # area
@@ -73,8 +76,8 @@ model.jags <- function() {
           mu.psi.0 +
           psi.sp[sp] +
           psi.area*area[site] +
-          psi.canag[sp]*countanimal[site] +           
-          psi.pest1[sp]*pesticide1[site,yr] 
+          psi.col[sp]*honeybeetime[site,yr] +           
+          psi.canag[sp]*countanimalabs[site] 
         # 
         ## detection
         logit(p[site,yr,sp]) <-
@@ -114,8 +117,9 @@ get.params <- function()
   c('p.era',
     'mu.p.0',
     'mu.psi.0',
-    'mu.psi.pest1',
+    'mu.psi.col',
     'mu.psi.canag',
     'psi.sp',
-    'psi.pest1',
-    'psi.canag')
+    'psi.col',
+    'psi.canag',
+    'psi.area')

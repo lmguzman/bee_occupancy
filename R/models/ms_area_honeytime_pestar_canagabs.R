@@ -1,3 +1,4 @@
+
 model.jags <- function() {
   
   ### priors
@@ -23,48 +24,59 @@ model.jags <- function() {
   }
   
   ## effect of yr on detection
-  p.yr ~ dnorm(0,0.01)
+  p.era ~ dnorm(0,0.01)
   
+  # random effect of year on initial colonization and extinction
   
-  ## species specific intercepts
-  
-  ## random effect of species on occupancy and detection
-  sigma.psi.sp   ~ dunif(0,10)
-  tau.psi.sp    <- 1/(sigma.psi.sp*sigma.psi.sp)
-  for(sp in 1:nsp) {
-    psi.sp[sp]   ~ dnorm(0, tau.psi.sp)
-  }
-  # 
-  
-  
-  # main effect of era on occupancy
-  
-  mu.psi.era ~ dnorm(0,0.01)
+  sigma.psi.sp ~ dunif(0,10)
+  tau.psi.sp <- 1/(sigma.psi.sp*sigma.psi.sp)
   
   mu.psi.0 ~ dnorm(0,0.01)
   
-  # species specific slopes on era
+  for(sp in 1:nsp){
+    psi.sp[sp] ~ dnorm(0,tau.psi.sp)
+  }
   
-  sigma.psi.era ~ dunif(0,10)
-  tau.psi.era <- 1/(sigma.psi.era*sigma.psi.era)
+  ## county of animal pollinated agriculture
+
+## county of animal pollinated agriculture
   
+  mu.psi.canag ~ dnorm(0,0.01)
+  sigma.psi.canag ~ dunif(0,10)
+  tau.psi.canag <- 1/(sigma.psi.canag*sigma.psi.canag)
   
   for(sp in 1:nsp){
-    psi.era[sp] ~ dnorm(0,tau.psi.era)
+    psi.canag[sp] ~ dnorm(mu.psi.canag, tau.psi.canag)
+  }
+
+ ### honey bee colonies 
+ 
+  mu.psi.col ~ dnorm(0,0.01)
+  sigma.psi.col ~ dunif(0,10)
+  tau.psi.col <- 1/(sigma.psi.col*sigma.psi.col)
+  
+  for(sp in 1:nsp){
+    psi.col[sp] ~ dnorm(mu.psi.col, tau.psi.col)
   }
   
-  # site specific slopes on era
   
-  sigma.psi.era.site ~ dunif(0,10)
-  tau.psi.era.site <- 1/(sigma.psi.era.site*sigma.psi.era.site)
+  ## Species specific slopes to each type of pesticide
   
+  mu.psi.pest1 ~ dnorm(0,0.01)
+  sigma.psi.pest1 ~ dunif(0,10)
+  tau.psi.pest1 <- 1/(sigma.psi.pest1*sigma.psi.pest1)
   
-  for(site in 1:nsite){
-    psi.era.site[site] ~ dnorm(0,tau.psi.era.site)
+  for(sp in 1:nsp){
+    psi.pest1[sp] ~ dnorm(mu.psi.pest1, tau.psi.pest1)
   }
   
   
-  # calcualte occupancy 
+  # area
+  
+  psi.area ~ dnorm(0,0.01)
+
+  
+  #####
   
   for(sp in 1:nsp) {
     for(yr in 1:nyr) {
@@ -73,15 +85,15 @@ model.jags <- function() {
         logit(psi[site,yr,sp]) <-
           mu.psi.0 +
           psi.sp[sp] +
-          mu.psi.era*yr +
-          psi.era[sp]*yr +
-          psi.era.site[site]*yr
-        
+          psi.area*area[site] +
+          psi.col[sp]*honeybeetime[site,yr] +           
+          psi.pest1[sp]*pesticidearea[site,yr] +
+          psi.canag[sp]*countanimalabs[site] 
         # 
         ## detection
         logit(p[site,yr,sp]) <-
           mu.p.0 +
-          p.yr*(yr) +
+          p.era*yr +
           p.sp[sp] +
           p.site[site,yr]
         
@@ -113,24 +125,14 @@ model.jags <- function() {
   
 }
 get.params <- function()
-  c('p.yr',
+  c('p.era',
     'mu.p.0',
     'mu.psi.0',
-    'mu.psi.era',
-    'psi.era',
-    'psi.sp', 
-    'psi.era.site')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    'mu.psi.pest1',
+    'mu.psi.col',
+    'mu.psi.canag',
+    'psi.sp',
+    'psi.pest1',
+    'psi.col',
+    'psi.canag',
+    'psi.area')

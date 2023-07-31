@@ -1,3 +1,4 @@
+
 model.jags <- function() {
   
   ### priors
@@ -36,35 +37,28 @@ model.jags <- function() {
     psi.sp[sp] ~ dnorm(0,tau.psi.sp)
   }
   
-  ## Species specific slopes to temperature
+  ## county of animal pollinated agriculture
+
+## county of animal pollinated agriculture
   
-  mu.psi.tmax1 ~ dnorm(0,0.01)
-  sigma.psi.tmax1 ~ dunif(0,10)
-  tau.psi.tmax1 <- 1/(sigma.psi.tmax1*sigma.psi.tmax1)
-  
-  for(sp in 1:nsp){
-    psi.tmax1[sp] ~ dnorm(mu.psi.tmax1, tau.psi.tmax1)
-  }
-  
-  mu.psi.tmax2 ~ dunif(-10,0)
-  sigma.psi.tmax2 ~ dunif(0,10)
-  tau.psi.tmax2 <- 1/(sigma.psi.tmax2*sigma.psi.tmax2)
+  mu.psi.canag ~ dnorm(0,0.01)
+  sigma.psi.canag ~ dunif(0,10)
+  tau.psi.canag <- 1/(sigma.psi.canag*sigma.psi.canag)
   
   for(sp in 1:nsp){
-    #psi.tmax2[sp] ~ dnorm(mu.psi.tmax2, tau.psi.tmax2);T(,0)
-    psi.tmax2[sp] ~ dnorm(mu.psi.tmax2, tau.psi.tmax2)
+    psi.canag[sp] ~ dnorm(mu.psi.canag, tau.psi.canag)
   }
-  
-  
-  ## Species specific slopes to precipitation
-  
-  mu.psi.prec ~ dnorm(0,0.01)
-  sigma.psi.prec ~ dunif(0,10)
-  tau.psi.prec <- 1/(sigma.psi.prec*sigma.psi.prec)
+
+ ### honey bee colonies 
+ 
+  mu.psi.col ~ dnorm(0,0.01)
+  sigma.psi.col ~ dunif(0,10)
+  tau.psi.col <- 1/(sigma.psi.col*sigma.psi.col)
   
   for(sp in 1:nsp){
-    psi.prec[sp] ~ dnorm(mu.psi.prec, tau.psi.prec)
+    psi.col[sp] ~ dnorm(mu.psi.col, tau.psi.col)
   }
+  
   
   ## Species specific slopes to each type of pesticide
   
@@ -76,33 +70,11 @@ model.jags <- function() {
     psi.pest1[sp] ~ dnorm(mu.psi.pest1, tau.psi.pest1)
   }
   
-
-  ## agriculture
-  
-  mu.psi.agric ~ dnorm(0,0.01)
-  sigma.psi.agric ~ dunif(0,10)
-  tau.psi.agric <- 1/(sigma.psi.agric*sigma.psi.agric)
-  
-  for(sp in 1:nsp){
-    psi.agric[sp] ~ dnorm(mu.psi.agric, tau.psi.agric)
-  }
-  
-  
-  
-  # species specific slopes on era
-  
-  sigma.psi.era ~ dunif(0,10)
-  tau.psi.era <- 1/(sigma.psi.era*sigma.psi.era)
-  
-  mu.psi.yr ~ dnorm(0,0.01)
-  
-  for(sp in 1:nsp){
-    psi.era[sp] ~ dnorm(mu.psi.yr,tau.psi.era)
-  }
   
   # area
   
   psi.area ~ dnorm(0,0.01)
+
   
   #####
   
@@ -113,14 +85,10 @@ model.jags <- function() {
         logit(psi[site,yr,sp]) <-
           mu.psi.0 +
           psi.sp[sp] +
-          psi.era[sp]*yr +
           psi.area*area[site] +
-          psi.tmax1[sp]*tmax[site,yr] + ## warm sites have higher persistence (+)
-          psi.tmax2[sp]*tmax[site,yr]^2 +
-          psi.prec[sp]*prec[site,yr] + 
-          psi.pest1[sp]*pesticide1[site,yr] +
-          psi.agric[sp]*agriculture[site,yr] 
-        
+          psi.col[sp]*honeybeetime[site,yr] +           
+          psi.pest1[sp]*pesticidearea[site,yr] +
+          psi.canag[sp]*countanimal[site] 
         # 
         ## detection
         logit(p[site,yr,sp]) <-
@@ -160,30 +128,11 @@ get.params <- function()
   c('p.era',
     'mu.p.0',
     'mu.psi.0',
-    'mu.psi.tmax1',
-    'mu.psi.tmax2',
-    'mu.psi.prec',
     'mu.psi.pest1',
-    'mu.psi.agric',
-    'mu.psi.yr',
+    'mu.psi.col',
+    'mu.psi.canag',
     'psi.sp',
-    'psi.era',
-    'psi.tmax1',
-    'psi.tmax2',
-    'psi.prec', 
     'psi.pest1',
-    'psi.agric')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    'psi.col',
+    'psi.canag',
+    'psi.area')

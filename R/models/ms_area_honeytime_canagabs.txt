@@ -13,26 +13,33 @@ model
             p.site[site, yr] ~ dnorm(0.00000E+00, tau.p.site)
         }
     }
-    p.yr ~ dnorm(0.00000E+00, 0.01)
+    p.era ~ dnorm(0.00000E+00, 0.01)
     sigma.psi.sp ~ dunif(0.00000E+00, 10)
     tau.psi.sp <- 1/(sigma.psi.sp * sigma.psi.sp)
+    mu.psi.0 ~ dnorm(0.00000E+00, 0.01)
     for (sp in 1:nsp) {
         psi.sp[sp] ~ dnorm(0.00000E+00, tau.psi.sp)
     }
-    sigma.psi.era ~ dunif(0.00000E+00, 10)
-    tau.psi.era <- 1/(sigma.psi.era * sigma.psi.era)
-    mu.psi.0 ~ dnorm(0.00000E+00, 0.01)
-    mu.psi.yr ~ dnorm(0.00000E+00, 0.01)
-    psi.area ~ dnorm(0.00000E+00, 0.01)
+    mu.psi.canag ~ dnorm(0.00000E+00, 0.01)
+    sigma.psi.canag ~ dunif(0.00000E+00, 10)
+    tau.psi.canag <- 1/(sigma.psi.canag * sigma.psi.canag)
     for (sp in 1:nsp) {
-        psi.era[sp] ~ dnorm(mu.psi.yr, tau.psi.era)
+        psi.canag[sp] ~ dnorm(mu.psi.canag, tau.psi.canag)
     }
+    mu.psi.col ~ dnorm(0.00000E+00, 0.01)
+    sigma.psi.col ~ dunif(0.00000E+00, 10)
+    tau.psi.col <- 1/(sigma.psi.col * sigma.psi.col)
+    for (sp in 1:nsp) {
+        psi.col[sp] ~ dnorm(mu.psi.col, tau.psi.col)
+    }
+    psi.area ~ dnorm(0.00000E+00, 0.01)
     for (sp in 1:nsp) {
         for (yr in 1:nyr) {
             for (site in 1:nsite) {
-                logit(psi[site, yr, sp]) <- mu.psi.0 + psi.area * 
-                  area[site] + psi.sp[sp] + psi.era[sp] * yr
-                logit(p[site, yr, sp]) <- mu.p.0 + p.yr * (yr) + 
+                logit(psi[site, yr, sp]) <- mu.psi.0 + psi.sp[sp] + 
+                  psi.area * area[site] + psi.col[sp] * honeybeetime[site, 
+                  yr] + psi.canag[sp] * countanimalabs[site]
+                logit(p[site, yr, sp]) <- mu.p.0 + p.era * yr + 
                   p.sp[sp] + p.site[site, yr]
             }
         }

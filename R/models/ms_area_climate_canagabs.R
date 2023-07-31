@@ -25,8 +25,6 @@ model.jags <- function() {
   ## effect of yr on detection
   p.era ~ dnorm(0,0.01)
   
-  
-  
   # random effect of year on initial colonization and extinction
   
   sigma.psi.sp ~ dunif(0,10)
@@ -47,16 +45,16 @@ model.jags <- function() {
   for(sp in 1:nsp){
     psi.tmax1[sp] ~ dnorm(mu.psi.tmax1, tau.psi.tmax1)
   }
-  
-  mu.psi.tmax2 ~ dnorm(0,0.01)
+ 
+	## tmax 2
+ 
+  mu.psi.tmax2 ~ dnorm(0,0.01);T(,0)
   sigma.psi.tmax2 ~ dunif(0,10)
   tau.psi.tmax2 <- 1/(sigma.psi.tmax2*sigma.psi.tmax2)
-  
+
   for(sp in 1:nsp){
-    #psi.tmax2[sp] ~ dnorm(mu.psi.tmax2, tau.psi.tmax2);T(,0)
     psi.tmax2[sp] ~ dnorm(mu.psi.tmax2, tau.psi.tmax2)
   }
-  
   
   ## Species specific slopes to precipitation
   
@@ -66,88 +64,18 @@ model.jags <- function() {
   
   for(sp in 1:nsp){
     psi.prec[sp] ~ dnorm(mu.psi.prec, tau.psi.prec)
-  }
-  
-  ## Species specific slopes to each type of pesticide
-  
-  mu.psi.pest1 ~ dnorm(0,0.01)
-  sigma.psi.pest1 ~ dunif(0,10)
-  tau.psi.pest1 <- 1/(sigma.psi.pest1*sigma.psi.pest1)
-  
-  for(sp in 1:nsp){
-    psi.pest1[sp] ~ dnorm(mu.psi.pest1, tau.psi.pest1)
-  }
-  
-  mu.psi.pest2 ~ dnorm(0,0.01)
-  sigma.psi.pest2 ~ dunif(0,10)
-  tau.psi.pest2 <- 1/(sigma.psi.pest2*sigma.psi.pest2)
-  
-  for(sp in 1:nsp){
-    psi.pest2[sp] ~ dnorm(mu.psi.pest2, tau.psi.pest2)
-  }
-  
-  mu.psi.pest3 ~ dnorm(0,0.01)
-  sigma.psi.pest3 ~ dunif(0,10)
-  tau.psi.pest3 <- 1/(sigma.psi.pest3*sigma.psi.pest3)
-  
-  for(sp in 1:nsp){
-    psi.pest3[sp] ~ dnorm(mu.psi.pest3, tau.psi.pest3)
-  }
-  
-  
+  }  
+
   ## agriculture
   
-  mu.psi.agric ~ dnorm(0,0.01)
-  sigma.psi.agric ~ dunif(0,10)
-  tau.psi.agric <- 1/(sigma.psi.agric*sigma.psi.agric)
+  mu.psi.canag ~ dnorm(0,0.01)
+  sigma.psi.canag ~ dunif(0,10)
+  tau.psi.canag <- 1/(sigma.psi.canag*sigma.psi.canag)
   
   for(sp in 1:nsp){
-    psi.agric[sp] ~ dnorm(mu.psi.agric, tau.psi.agric)
+    psi.canag[sp] ~ dnorm(mu.psi.canag, tau.psi.canag)
   }
-  
-  ## drought
-  
-  mu.psi.drought ~ dnorm(0,0.01)
-  sigma.psi.drought ~ dunif(0,10)
-  tau.psi.drought <- 1/(sigma.psi.drought*sigma.psi.drought)
-  
-  for(sp in 1:nsp){
-    psi.drought[sp] ~ dnorm(mu.psi.drought, tau.psi.drought)
-  }
-  
-  
-  ## floral
-  
-  mu.psi.floral ~ dnorm(0,0.01)
-  sigma.psi.floral ~ dunif(0,10)
-  tau.psi.floral <- 1/(sigma.psi.floral*sigma.psi.floral)
-  
-  for(sp in 1:nsp){
-    psi.floral[sp] ~ dnorm(mu.psi.floral, tau.psi.floral)
-  }
-  
-  
-  ## nest
-  
-  mu.psi.nest ~ dnorm(0,0.01)
-  sigma.psi.nest ~ dunif(0,10)
-  tau.psi.nest <- 1/(sigma.psi.nest*sigma.psi.nest)
-  
-  for(sp in 1:nsp){
-    psi.nest[sp] ~ dnorm(mu.psi.nest, tau.psi.nest)
-  }
-  
-  # species specific slopes on era
-  
-  sigma.psi.era ~ dunif(0,10)
-  tau.psi.era <- 1/(sigma.psi.era*sigma.psi.era)
-  
-  mu.psi.yr ~ dnorm(0,0.01)
-  
-  for(sp in 1:nsp){
-    psi.era[sp] ~ dnorm(mu.psi.yr,tau.psi.era)
-  }
-  
+   
   # area
   
   psi.area ~ dnorm(0,0.01)
@@ -161,18 +89,11 @@ model.jags <- function() {
         logit(psi[site,yr,sp]) <-
           mu.psi.0 +
           psi.sp[sp] +
-          psi.era[sp]*yr +
           psi.area*area[site] +
           psi.tmax1[sp]*tmax[site,yr] + ## warm sites have higher persistence (+)
           psi.tmax2[sp]*tmax[site,yr]^2 +
           psi.prec[sp]*prec[site,yr] + 
-          psi.pest1[sp]*pesticide1[site,yr] +
-          psi.pest2[sp]*pesticide2[site,yr] +
-          psi.pest3[sp]*pesticide3[site,yr] +
-          psi.agric[sp]*agriculture[site,yr] +
-          psi.drought[sp]*drought[site,yr]+
-          psi.floral[sp]*floral[site,yr]+
-          psi.nest[sp]*nesting[site,yr]
+          psi.canag[sp]*countanimalabs[site] 
         
         # 
         ## detection
@@ -216,26 +137,12 @@ get.params <- function()
     'mu.psi.tmax1',
     'mu.psi.tmax2',
     'mu.psi.prec',
-    'mu.psi.pest1',
-    'mu.psi.pest2',
-    'mu.psi.pest3',
-    'mu.psi.agric',
-    'mu.psi.drought',
-    'mu.psi.floral',
-    'mu.psi.nest',
-    'mu.psi.yr',
+    'mu.psi.canag',
     'psi.sp',
-    'psi.era',
     'psi.tmax1',
     'psi.tmax2',
     'psi.prec', 
-    'psi.pest1',
-    'psi.pest2',
-    'psi.pest3',
-    'psi.agric',
-    'psi.drought',
-    'psi.floral',
-    'psi.nest')
+    'psi.canag')
 
 
 
