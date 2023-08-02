@@ -15,4 +15,3 @@ Guzman LM, Elle E, Morandin L, Cobb NS, Chesshire PR, McCabe LM, Hughes A, Orr M
 -   `R/` - this folder contains all the scripts used in the main analysis for data processing, and figure generation
 
 
-[![CC BY 4.0][cc-by-shield]][cc-by]
