@@ -1,4 +1,6 @@
 
+## function to extract model summaries
+
 get.summ <- function(pars, res.summary) {
   summ <- round(cbind(
     res.summary$summary$statistics[pars,'Mean',drop=FALSE],
@@ -9,7 +11,9 @@ get.summ <- function(pars, res.summary) {
   summ
 }
 
-## mean effect function
+####### Functions to calculate the mean occupupancy of the family across multiple values of pesiticde (MODEL 1)
+
+## mean effect functions model 1 
 
 get.y.val.main <- function(sims.mat, ps, hb, ag) {
   chains <- expit(sims.mat[,'mu.psi.0'] +
@@ -19,6 +23,8 @@ get.y.val.main <- function(sims.mat, ps, hb, ag) {
   )
   data.table(data.frame(mean=mean(chains), t(quantile(chains, probs=c(0.025,0.975)))))
 }
+
+## mean effect function that wraps around multiple values of pesticide 
 
 get.y.val.main.all <- function(sims.mat, my.data){
     
@@ -35,26 +41,9 @@ get.y.val.main.all <- function(sims.mat, my.data){
 }
 
 
+########## Functions to calculate the genus trends #######
 
-
-
-### species specific function 
-
-get.y.val <- function(sims.mat, ss, tt1, pp, nn, ag) {
-  
-  chains <- expit(sims.mat[,'mu.psi.0'] +
-                    sims.mat[,sprintf('psi.sp[%d]', ss)]       +
-                    sims.mat[,sprintf('psi.tmax1[%s]', ss)]    * tt1 +
-                    sims.mat[,sprintf('psi.tmax2[%s]', ss)]    * tt1^2 +
-                    sims.mat[,sprintf('psi.prec[%s]', ss)]    * pp  +
-                    sims.mat[,sprintf('psi.pest1[%s]', ss)]     * nn +
-                    sims.mat[,sprintf('psi.agric[%s]', ss)]     * ag 
-  )
-  data.table(data.frame(ss, tt1, pp, nn,  ag,  mean=mean(chains), t(quantile(chains, probs=c(0.025,0.975)))))
-}
-
-
-## genus function pesticide  ####
+## genus function pesticide Model 1 ####
 
 get.y.val.genus <- function(sims.mat, ss, gg, ps, hb, ag) {
   
@@ -93,10 +82,9 @@ get.y.val.genus.all <- function(sims.mat, my.data, species_directory){
 }
 
 
-
 ######## get genus animal pollinated agriculture ########
 
-## genus function pesticide  ####
+## genus function apa (Model 2)  ####
 
 get.y.val.genus.canag <- function(sims.mat, ss, gg, ag, tt, pc) {
   
