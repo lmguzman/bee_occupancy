@@ -460,7 +460,7 @@ main_pest_df %>%
   filter(ps %in% c(min(main_pest_df$ps), max(main_pest_df$ps))) %>% 
   dplyr::select(mean, ps, family) %>% 
   pivot_wider(names_from = ps, values_from = mean) %>% 
-  rename(no_pest = `-4.17560742453957`, max_pest = `1.77649633931698`) %>% 
+  rename(no_pest = `-4.17560742453955`, max_pest = `1.77649633931698`) %>% 
   mutate(net_change = no_pest - max_pest, percent_change = (no_pest - max_pest)/no_pest)
  
 ############## Figure S13 #############
@@ -550,7 +550,7 @@ genus_family_pest_df %>%
   filter(ps %in% c(min(main_pest_df$ps), max(main_pest_df$ps))) %>% 
   dplyr::select(mean, ps, family, gg) %>% 
   pivot_wider(names_from = ps, values_from = mean) %>% 
-  rename(no_pest = `-4.17560742453957`, max_pest = `1.77649633931698`) %>% 
+  rename(no_pest = `-4.17560742453955`, max_pest = `1.77649633931698`) %>% 
   mutate(net_change = no_pest - max_pest, percent_change = 100*(no_pest - max_pest)/no_pest) %>% 
   arrange(percent_change) %>% View()
 
