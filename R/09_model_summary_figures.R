@@ -1,4 +1,4 @@
-## Script to visualize main model trends (Figure 2, and Supplementary Figures S14)
+## Script to visualize main model trends (Figure 2, and Supplementary Figures S15)
 
 library(dplyr)
 library(ggplot2)
@@ -90,7 +90,7 @@ ggsave(pesticide_effect, file = "plots/Figure2_p3.pdf", width = 10)
 
 #####################
 
-### supplementary figure S14 with managed bees filter on agriculture 
+### supplementary figure S15 with managed bees filter on agriculture 
 
 
 ## the effect of agriculture Model 1 ##

@@ -1,6 +1,6 @@
 ###### Script to produce figures that agregate at the genus level ######
 
-### Figures 3, S10, S11, S12, S13
+### Figures 3, S10, S11, S12, S13, S14
 
 library(ggplot2)
 library(cowplot)
@@ -136,7 +136,7 @@ for(f in fam){
   
 }
 
-#### species plots Figure S11 ###
+#### species plots Figure S12 ###
 
 ## set the color palette
 
@@ -182,7 +182,7 @@ species_plot_all <- plot_grid(species_pest_plot, species_ag_plot, species_honey_
 ggsave(species_plot_all, file = 'plots/species_averages.pdf', width = 12, height = 15)
 
 
-######### genus plot all Figure S10  ######
+######### genus plot all Figure S11  ######
 
 palette1_significance = setNames(object = c('#808080', "#5D3A9B","#E66100"), nm = c('not_sig', "sig_pos", "sig_neg"))
 
@@ -374,7 +374,7 @@ all_genus_g10_plots <- plot_grid(genus_10_plots_pest, genus_10_plots_apa, genus_
 ggsave(all_genus_g10_plots, file = 'plots/Figure3.pdf', width = 12, height = 11)
 
 
-########### Figure S9 occupancy trends at the family level ######
+########### Figure S10 occupancy trends at the family level ######
 
 create_data_for_plots <- function(f){
 
@@ -424,7 +424,7 @@ for(f in fam){
   
 }
 
-#### Figure S9 #####
+#### Figure S10 #####
 
 main_trend_pes <- main_family_list %>% 
   rbindlist() %>% 
@@ -463,7 +463,7 @@ main_pest_df %>%
   rename(no_pest = `-4.17560742453957`, max_pest = `1.77649633931698`) %>% 
   mutate(net_change = no_pest - max_pest, percent_change = (no_pest - max_pest)/no_pest)
  
-############## Figure S12 #############
+############## Figure S13 #############
  
 ##### calculates occupancy for every genera in Model 1  #####
 
@@ -513,7 +513,7 @@ for(f in fam){
   
 }
 
-## plot Figure S12 ##
+## plot Figure S13 ##
 
 genus_trend_pes <- genus_family_list %>% 
   rbindlist() %>% 
@@ -556,7 +556,7 @@ genus_family_pest_df %>%
 
 
 
-########## Figure S13 #########
+########## Figure S14 #########
 
 ##### get genus level occupancy estimates for animal pollinated agriculture  #####
 
@@ -607,7 +607,7 @@ for(f in fam){
   
 }
 
-#### Figure S13 ###
+#### Figure S14 ###
 
 genus_trend_canag <- genus_family_list %>% 
   rbindlist() %>% 
