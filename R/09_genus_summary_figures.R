@@ -31,6 +31,8 @@ mcmc_sp_pest <- list()
 
 fam <- c("Andrenidae", "Apidae", "Halictidae", "Megachilidae",  "Colletidae|Melittidae")
 
+obs_genus <- list()
+
 for(f in fam){
   
   ## read data
@@ -40,6 +42,12 @@ for(f in fam){
   species_directory <- data.frame(finalName = my.data$sp) %>% 
     mutate(ss = 1:n()) %>% 
     left_join(my.data[[2]])
+  
+  observations <- read.csv(paste0("clean_data/observations_used/",f,".csv"))
+  
+  obs_genus[[f]] <- observations %>% 
+    group_by(genus) %>% 
+    count()
   
   ## apa model 
   
@@ -272,6 +280,9 @@ ggsave(genus_plot_all, file = 'plots/genus_averages.pdf', width = 12, height = 1
 
 ## apa
 
+n_obs <- obs_genus %>% 
+  map_df(~as.data.frame(.x))
+
 genus_g10_apa <-mcmc_apa_all %>% 
   select(finalName, genus) %>% 
   group_by(genus) %>% 
@@ -283,6 +294,7 @@ genus_family <- select(species_genus_family, genus, family) %>% unique()
 genus_10_plots_apa <- genus_estimates_apa %>% 
   filter(genus %in% genus_g10_apa$genus) %>% 
   inner_join(genus_family) %>% 
+  left_join(n_obs) %>% 
   arrange(family, genus) %>% 
   ggplot() +
   facet_grid(rows = vars(family), 
@@ -297,11 +309,10 @@ genus_10_plots_apa <- genus_estimates_apa %>%
         axis.text.y = element_text(size = 12), 
         strip.placement = "outside",                      # Place facet labels outside x axis labels.
         strip.background = element_rect(fill = "white"),  # Make facet label background white.
-        axis.title = element_blank(),
+        axis.title.y = element_blank(),
         strip.text = element_text(color = 'white')) + 
   scale_colour_manual(values = palette1_significance) +
   scale_y_discrete(limits = rev) +
-  ylab('') +
   xlab("Effect of Animal Pollinated Agriculture") 
 
 
@@ -330,11 +341,10 @@ genus_10_plots_honey <- genus_estimates_honey %>%
         axis.text.y = element_text(size = 12), 
         strip.placement = "outside",                      # Place facet labels outside x axis labels.
         strip.background = element_rect(fill = "white"),  # Make facet label background white.
-        axis.title = element_blank(),
+        axis.title.y = element_blank(),
         strip.text = element_text(color = 'white')) + 
   scale_colour_manual(values = palette1_significance) +
   scale_y_discrete(limits = rev) +
-  ylab('') +
   xlab("Effect of Honey Bees") 
   
 
@@ -349,6 +359,7 @@ genus_g10_pest <-mcmc_pest_all %>%
 genus_10_plots_pest <- genus_estimates_pest %>% 
   filter(genus %in% genus_g10_pest$genus) %>% 
   inner_join(genus_family) %>% 
+  left_join(n_obs) %>% 
   arrange(family, genus) %>% 
   ggplot() +
   facet_grid(rows = vars(family), 
@@ -360,14 +371,13 @@ genus_10_plots_pest <- genus_estimates_pest %>%
   theme_cowplot() +
   geom_vline(xintercept = 0, linetype="dashed", colour = 'grey') +
   theme(legend.position = 'none',
-        axis.text.y = element_text(size = 12), 
+        axis.text.y = element_text(size = 12),
         strip.placement = "outside",                      # Place facet labels outside x axis labels.
         strip.background = element_rect(fill = "white"),  # Make facet label background white.
-        axis.title = element_blank()) + 
+        axis.title.y = element_blank()) +
   scale_colour_manual(values = palette1_significance) +
   scale_y_discrete(limits = rev) +
-  ylab('') +
-  xlab("Effect of Pesticide Use") 
+  xlab("Effect of Pesticide Use")
 
 all_genus_g10_plots <- plot_grid(genus_10_plots_pest, genus_10_plots_apa, genus_10_plots_honey,  labels = c("A.", "B.", "C."), nrow = 1)
 
@@ -441,7 +451,7 @@ main_trend_pes <- main_family_list %>%
   xlab("Pesticide Use") +
   scale_y_continuous(limits = c(0,1))
 
-ggsave(main_trend_pes, filename = "plots/trends/main_env_pesticide.pdf")
+ggsave(main_trend_pes, filename = "plots/trends/main_env_pesticide.pdf", width = 9)
 
 
 ### get summaries for results
@@ -530,7 +540,7 @@ genus_trend_pes <- genus_family_list %>%
   xlab("Pesticide Use") +
   scale_y_continuous(limits = c(0,1))
 
-ggsave(genus_trend_pes, filename = "plots/trends/genus_env_pesticide.pdf")
+ggsave(genus_trend_pes, filename = "plots/trends/genus_env_pesticide.pdf", width = 9)
 
 #### get genus level summaries ## 
 
@@ -625,7 +635,7 @@ genus_trend_canag <- genus_family_list %>%
   scale_y_continuous(limits = c(0,1))
 
 
-ggsave(genus_trend_canag, filename = "plots/trends/genus_env_canag.pdf")
+ggsave(genus_trend_canag, filename = "plots/trends/genus_env_canag.pdf", width = 9)
 
 #### get summary values for results ##
 

@@ -49,20 +49,25 @@ for(f in unique_results){
   summ.paper <- summ[str_detect(rownames(summ), 'mu.psi'),]
   
   ## extract the model type 
-  model <- str_extract(f, "ms_\\S*_\\d+")
+  
+  model <- str_extract(f, "ms_area_honeytime_pestar_canag|ms_area_climate_canag|ms_area_honeytime_canag")
+  
+  ## type of ag
+  
+  model_type_ag <- str_extract(f, "canagabs|canagmb|canag")
   
   ## extract the family
-  family <- str_remove(str_remove(str_extract(f, "ms_\\S*_ALL"), 'ms_\\S*_\\d+\\_'), "_ALL")
+  family <- str_extract(f, "Andrenidae|Apidae|Colletidae|Halictidae|Megachilidae")
   
   # get the variable name
   variable <- str_remove(rownames(summ.paper), "mu.psi.")
   
   if(nrow(summ.paper) == 7){
-    compiled_results[[f]] <- data.frame(summ.paper, model = model, family = family, 
+    compiled_results[[f]] <- data.frame(summ.paper, model = model, family = family, model_type_ag = model_type_ag,
                                         variable = variable, run_length = run_length)
     
   }else{
-    compiled_results[[f]] <- data.frame(summ.paper, model = model, family = family, 
+    compiled_results[[f]] <- data.frame(summ.paper, model = model, family = family, model_type_ag = model_type_ag, 
                                         run_length = run_length, 
                                         variable = variable) 
   }
@@ -70,10 +75,10 @@ for(f in unique_results){
 }
 
 all_results <- compiled_results %>% 
-  map_df(~as.data.frame(.x), .id = "file_name")
+  map_df(~as.data.frame(.x), .id = "file_name") %>% 
+  mutate(family = ifelse(family == 'Colletidae', 'Colletidae|Melittidae', family))
 
 saveRDS(all_results, "model_outputs/all_results.rds")
-
 
 
 

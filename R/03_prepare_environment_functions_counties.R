@@ -4,19 +4,19 @@ library(data.table)
 library(tidyr)
 library(units)
 
-prepare_environmental_data <- function(year_range){
+prepare_environmental_data <- function(year_range, length_oc_int){
   
   # prepare temperature 
   
-  tmax_mat <- prepare_tmax(year_range)
+  tmax_mat <- prepare_tmax(year_range, length_oc_int)
   
   # prepare precipitation
   
-  prec_mat <- prepare_prec(year_range)
+  prec_mat <- prepare_prec(year_range, length_oc_int)
   
   ## pesticides with area 
   
-  both_mat_area <- prepare_pesticide(year_range, "both", area = TRUE)
+  both_mat_area <- prepare_pesticide(year_range, "both", area = TRUE, length_oc_int)
   
   ## prepare agriculture
   
@@ -41,9 +41,11 @@ prepare_environmental_data <- function(year_range){
   
   ## get the sites present in all of the matrices
   
-  site_id <- sort(Reduce(intersect, list(rownames(tmax_mat), rownames(ag_mat), rownames(simple_col_mat), rownames(county_fan_mat))))
+  site_id <- sort(Reduce(intersect, list(rownames(tmax_mat), rownames(ag_mat), rownames(time_col_mat), rownames(county_fan_mat))))
   
-  final_year <- paste0("yr", year_range[1]:year_range[2])[seq(1,21, 3)]
+  nyears <- length(year_range[1]:year_range[2])
+  
+  final_year <- paste0("yr", year_range[1]:year_range[2])[seq(1,nyears, length_oc_int)]
   
   environment_prepared <- list(tmax_mat = tmax_mat[site_id,final_year],
                                prec_mat = prec_mat[site_id,final_year],
@@ -55,14 +57,27 @@ prepare_environmental_data <- function(year_range){
                                time_col_mat = time_col_mat[site_id, final_year], 
                                site_id = site_id)
   
-  saveRDS(environment_prepared, file = paste0("clean_data/data_prepared/environment_counties_", paste0(year_range, collapse = '_'), ".rds"))
+  saveRDS(environment_prepared, file = paste0("clean_data/data_prepared/environment_counties_", paste0(year_range, collapse = '_'), "_", length_oc_int,".rds"))
   
 }
 
 
 ##### temperature #####
 
-prepare_tmax <- function(year_range){
+prepare_tmax <- function(year_range, length_oc_int){
+  
+  ## get occupancy and visit periods
+  
+  nyears <- length(year_range[1]:year_range[2])
+  
+  n_occ_periods <- round(nyears/length_oc_int)
+  
+  yr_average <- data.frame(year = year_range[1]:year_range[2], yr_avr = rep(1:n_occ_periods, each = length_oc_int))
+  
+  sel_years <- yr_average %>% 
+    group_by(yr_avr) %>% 
+    slice(1) %>% 
+    ungroup()
   
   ## load data
   
@@ -70,7 +85,8 @@ prepare_tmax <- function(year_range){
   
   climate <- climate_raw %>% 
     map_df(~as.data.frame(.x)) %>% 
-    filter(year >= year_range[1] & year <= year_range[2])
+    filter(year >= year_range[1] & year <= year_range[2]) %>% 
+    mutate(year = as.numeric(year))
   
   ## prepare temperature ### 
   
@@ -78,14 +94,18 @@ prepare_tmax <- function(year_range){
   
   climate_temp <- climate %>%
     mutate(site = paste0("s_", state_county)) %>% 
-    filter(variable == 'tmax' & month %in% c(7,8)) %>% 
+    filter(variable == 'tmax') %>% 
     group_by(site, year) %>% 
     summarise(max_t_year = max(values, na.rm = TRUE)/10) %>% 
+    left_join(yr_average) %>% 
+    group_by(yr_avr, site) %>% 
+    summarise(mean_max_t = mean(max_t_year, na.rm = TRUE)) %>% 
+    left_join(sel_years) %>% 
     mutate(year = paste0("yr", year)) %>%
-    filter(!is.infinite(max_t_year), !is.na(max_t_year)) %>% 
+    filter(!is.infinite(mean_max_t), !is.na(mean_max_t)) %>% 
     ungroup() %>% 
-    mutate(scaled_p = scale(max_t_year)) %>% 
-    dplyr::select(-max_t_year) %>% 
+    mutate(scaled_p = scale(mean_max_t)) %>% 
+    dplyr::select(-mean_max_t, -yr_avr) %>% 
     pivot_wider(names_from= 'year', values_from = 'scaled_p') %>% 
     tibble::column_to_rownames("site") %>%
     as.matrix() 
@@ -98,7 +118,21 @@ prepare_tmax <- function(year_range){
 
 ##### precipitation #####
 
-prepare_prec <- function(year_range){
+prepare_prec <- function(year_range, length_oc_int){
+  
+  ## get occupancy and visit periods
+  
+  nyears <- length(year_range[1]:year_range[2])
+  
+  n_occ_periods <- round(nyears/length_oc_int)
+  
+  yr_average <- data.frame(year = year_range[1]:year_range[2], yr_avr = rep(1:n_occ_periods, each = length_oc_int))
+  
+  sel_years <- yr_average %>% 
+    group_by(yr_avr) %>% 
+    slice(1) %>% 
+    ungroup()
+  
   
   ## load data
   
@@ -106,7 +140,8 @@ prepare_prec <- function(year_range){
   
   climate <- climate_raw %>% 
     map_df(~as.data.frame(.x)) %>% 
-    filter(year >= year_range[1] & year <= year_range[2])
+    filter(year >= year_range[1] & year <= year_range[2]) %>% 
+    mutate(year = as.numeric(year))
   
   ## prepare precipitation ### 
   
@@ -117,11 +152,15 @@ prepare_prec <- function(year_range){
     filter(variable == 'prec') %>% 
     group_by(site, year) %>% 
     summarise(mean_prec_year = mean(values, na.rm = TRUE)) %>% 
+    left_join(yr_average) %>% 
+    group_by(yr_avr, site) %>% 
+    summarise(mean_mean_prec = mean(mean_prec_year, na.rm = TRUE)) %>% 
+    left_join(sel_years) %>% 
     mutate(year = paste0("yr", year)) %>%
-    filter(!is.infinite(mean_prec_year), !is.na(mean_prec_year)) %>% 
+    filter(!is.infinite(mean_mean_prec), !is.na(mean_mean_prec)) %>% 
     ungroup() %>% 
-    mutate(scaled_p = scale(mean_prec_year)) %>% 
-    dplyr::select(-mean_prec_year) %>% 
+    mutate(scaled_p = scale(mean_mean_prec)) %>% 
+    dplyr::select(-mean_mean_prec, -yr_avr) %>% 
     pivot_wider(names_from= 'year', values_from = 'scaled_p') %>% 
     tibble::column_to_rownames("site") %>%
     as.matrix() 
@@ -134,7 +173,15 @@ prepare_prec <- function(year_range){
 
 ##### pesticides #####
 
-prepare_pesticide <- function(year_range, pesticide, area){
+prepare_pesticide <- function(year_range, pesticide, area, length_oc_int){
+  
+  ## get occupancy and visit periods
+  
+  nyears <- length(year_range[1]:year_range[2])
+  
+  n_occ_periods <- round(nyears/length_oc_int)
+  
+  yr_average <- data.frame(YEAR = year_range[1]:year_range[2], yr_avr = rep(1:n_occ_periods, each = length_oc_int))
   
   ## load data depending on the pesticide used
   
@@ -174,7 +221,7 @@ prepare_pesticide <- function(year_range, pesticide, area){
   setkeyv(year_site, c("YEAR", "state_county", "COMPOUND"))
   setkeyv(pesticide_raw,  c("YEAR", "state_county", "COMPOUND"))
   
-  yr_average <- data.frame(YEAR = year_range[1]:year_range[2], yr_avr = rep(1:7, each = 3))
+  ## if pesticide is NA then it gets 0
   
   pesticide_all_sites <- year_site %>% 
     left_join(pesticide_raw) %>% 
@@ -192,7 +239,7 @@ prepare_pesticide <- function(year_range, pesticide, area){
       
   }
   
-  ### average across all three years per occupancy periods
+  ### average across all years per occupancy periods
   
   averaged_by_year_site_compound <- pesticide_all_sites[,.(av_pesticides = mean(pest_site_ld50_use)), by = .(site, yr_avr, COMPOUND)] %>% 
     left_join(yr_average %>% 
@@ -237,7 +284,7 @@ prepare_agriculture <- function(){
     
     year_site <- expand.grid(new_year = paste0('yr', 1995:2016), state_county = all_us_sites$state_county)
     
-  
+    
     agriculture_df <- agriculture %>% 
       ### interpolates the same data to every intermediate year based on ag year
       left_join(ag_year) %>% 
@@ -350,10 +397,10 @@ prepare_honey_bees_time <- function(){
     
     ## make sure that every site and year have a value
     
-    honey_year <- data.frame(new_year = paste0("yr", 1995:2015)[seq(1,21,3)], Year = c(rep(2002, 3), rep(2007, 2),
-                                                                       rep(2012, 1), rep(2017, 1)))
+    honey_year <- data.frame(new_year = paste0("yr", 1995:2016), Year = c(rep(2002, 8), rep(2007, 5),
+                                                                       rep(2012, 5), rep(2017, 4)))
     
-    year_site <- expand.grid(new_year = paste0("yr", 1995:2015)[seq(1,21,3)], state_county = all_us_sites$state_county)
+    year_site <- expand.grid(new_year = paste0("yr", 1995:2016), state_county = all_us_sites$state_county)
     
     ## load county area
     

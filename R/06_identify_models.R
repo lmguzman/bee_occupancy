@@ -51,7 +51,7 @@ plot(apa_dag)
 
 ##### add climate and topography for full graph 
 
-########## check for adjustment sets when exposure is pesticde (model 1)
+########## check for adjustment sets when exposure is pesticide (model 1)
 
 #build graph
 apa_dag <- dagify(occupancy ~ pesticide + floral + nesting + honeybee + climate,

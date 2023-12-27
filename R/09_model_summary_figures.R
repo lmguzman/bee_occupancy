@@ -16,7 +16,7 @@ compiled_results <- readRDS("model_outputs/all_results.rds")
 ## the effect of agriculture Model 1 ##
 
 canag_effect <- compiled_results %>% 
-  filter(family != "ALL" & model %in% c("ms_area_climate_canag_17") & variable != "0") %>% 
+  filter(family != "ALL" & model %in% c("ms_area_climate_canag") & variable != "0" & model_type_ag == "canag") %>% 
   filter(variable == 'canag') %>% 
   mutate(family = str_replace(family, "\\|", ", ")) %>% 
   mutate(significant = ifelse((`X2.5.` < 0 & X97.5. < 0 )|(`X2.5.` > 0 & X97.5. > 0 ), "*", "")) %>% 
@@ -41,7 +41,7 @@ ggsave(canag_effect, file = "plots/Figure2_p1.pdf", width = 10)
 ## the effect of honey bees ##
 
 honey_bee_effect <- compiled_results %>% 
-  filter(family != "ALL" & model %in% c("ms_area_honeytime_canag_16") & variable != "0") %>% 
+  filter(family != "ALL" & model %in% c("ms_area_honeytime_canag") & variable != "0" & model_type_ag == "canag") %>% 
   filter(variable == 'col') %>% 
   mutate(family = str_replace(family, "\\|", ", ")) %>% 
   mutate(significant = ifelse((`X2.5.` < 0 & X97.5. < 0 )|(`X2.5.` > 0 & X97.5. > 0 ), "*", "")) %>% 
@@ -66,7 +66,7 @@ ggsave(honey_bee_effect, file = "plots/Figure2_p2.pdf", width = 10)
 ## the effect of pesticides ##
 
 pesticide_effect <-compiled_results %>% 
-  filter(family != "ALL" & model %in% c("ms_area_honeytime_pestar_canag_15") & variable != "0") %>% 
+  filter(family != "ALL" & model %in% c("ms_area_honeytime_pestar_canag") & variable != "0" & model_type_ag == "canag") %>% 
   filter(variable == 'pest1') %>% 
   mutate(family = str_replace(family, "\\|", ", ")) %>% 
   mutate(significant = ifelse((`X2.5.` < 0 & X97.5. < 0 )|(`X2.5.` > 0 & X97.5. > 0 ), "*", "")) %>% 
@@ -96,7 +96,7 @@ ggsave(pesticide_effect, file = "plots/Figure2_p3.pdf", width = 10)
 ## the effect of agriculture Model 1 ##
 
 canag_effect_mb <- compiled_results %>% 
-  filter(family != "ALL" & model %in% c("ms_area_climate_canagmb_17") & variable != "0") %>% 
+  filter(family != "ALL" & model %in% c("ms_area_climate_canag") & variable != "0" & model_type_ag == "canagmb") %>% 
   filter(variable == 'canag') %>% 
   mutate(significant = ifelse((`X2.5.` < 0 & X97.5. < 0 )|(`X2.5.` > 0 & X97.5. > 0 ), "*", "")) %>% 
   ggplot() +
@@ -166,7 +166,7 @@ pesticide_effectmb <-compiled_results %>%
 ## the effect of agriculture Model 1 ##
 
 canag_effect_abs <- compiled_results %>% 
-  filter(family != "ALL" & model %in% c("ms_area_climate_canagabs_17") & variable != "0") %>% 
+  filter(family != "ALL" & model %in% c("ms_area_climate_canag") & variable != "0" & model_type_ag == "canagabs") %>% 
   filter(variable == 'canag') %>% 
   mutate(significant = ifelse((`X2.5.` < 0 & X97.5. < 0 )|(`X2.5.` > 0 & X97.5. > 0 ), "*", "")) %>% 
   ggplot() +

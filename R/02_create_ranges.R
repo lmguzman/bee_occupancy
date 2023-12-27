@@ -13,6 +13,9 @@ library(stringr)
 
 all_obs <- fread("raw_data/data/cleaned_contiguousUS_records.csv")
 
+all_obs <- fread("/Volumes/Rasters/USC/bee_occupancy/raw_data/data/cleaned_contiguousUS_records.csv")
+
+
 ## get unique locations and years
 
 all_small <- distinct(all_obs[,.(finalName,family, genus, eventDate, finalLatitude, finalLongitude, year, month)][!is.na(year)])

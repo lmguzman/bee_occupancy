@@ -6,7 +6,7 @@ library(purrr)
 library(stringr)
 library(sf)
 
-prepare_occurrence <- function(family_filter, strict_filter){
+prepare_occurrence <- function(family_filter, strict_filter, year_range, length_oc_int){
   
   ## load data
   
@@ -14,7 +14,7 @@ prepare_occurrence <- function(family_filter, strict_filter){
   
   observations_raw$site <- paste0("s_", observations_raw$state_county)
   
-  environmental_data <- readRDS(paste0("clean_data/data_prepared/environment_counties_1995_2015.rds"))
+  environmental_data <- readRDS(paste0("clean_data/data_prepared/environment_counties_",paste0(year_range, collapse = '_'), "_", length_oc_int,".rds"))
   
   ranges <- readRDS(paste0("clean_data/ranges/ranges_counties.rds"))
   
@@ -25,8 +25,6 @@ prepare_occurrence <- function(family_filter, strict_filter){
   ## set which counties to use
   
   region_filter <- "ALL"
-  
-  year_range <- c(1995, 2015)
   
   ## arrange area 
   
@@ -62,12 +60,12 @@ prepare_occurrence <- function(family_filter, strict_filter){
   observations_clean <- inner_join(observations, sp_range_df)
   
   #### add occupancy interval and visit interval  ##
+
+  ## get occupancy and visit periods
   
-  ## occupancy is estimated every 3 years, visits are 1 year
-  
-  year_visit_df <- data.frame(oc_int = paste0("yr",rep(seq(year_range[1], (year_range[2]), 3), each = 3)), 
+  year_visit_df <- data.frame(oc_int = paste0("yr",rep(seq(year_range[1], (year_range[2]), length_oc_int), each = length_oc_int)), 
                               year = year_range[1]:year_range[2]) %>%
-    mutate(visit = rep(1:3, n()/3)) %>% 
+    mutate(visit = rep(1:length_oc_int, n()/length_oc_int)) %>% 
     mutate(visit = paste0("v", visit)) %>% data.table()
   
   setkey(observations_clean, 'year')
@@ -97,7 +95,7 @@ prepare_occurrence <- function(family_filter, strict_filter){
   
   observations_clean_sp <- distinct(observations_clean_vis_moreone[,.(finalName, site, oc_int, genus, visit)])
   
-  write.csv(observations_clean_sp, paste0("clean_data/observations_used/", family_filter, ".csv"), row.names = FALSE)
+  write.csv(observations_clean_sp, paste0("clean_data/observations_used/", family_filter, "_", length_oc_int,".csv"), row.names = FALSE)
   
   
   ## get data to create occupancy array
@@ -257,7 +255,7 @@ prepare_occurrence <- function(family_filter, strict_filter){
                        sp=species_presence)
   
   
-  saveRDS(all_data_env, paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_both_pest_area_county_1995_2015_", family_filter,"_ALL", strict_filter,".rds" ))
+  saveRDS(all_data_env, paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_both_pest_area_county_", paste0(year_range, collapse = '_'), "_", length_oc_int, family_filter,"_ALL", strict_filter,".rds" ))
   
 }
 
@@ -266,10 +264,13 @@ prepare_occurrence <- function(family_filter, strict_filter){
 fam <- c("Andrenidae", "Apidae", "Halictidae", 
          "Megachilidae", "Colletidae|Melittidae")
 
-for(f in fam){
-  prepare_occurrence(f, FALSE)
+length_oc_int <- 2:5
+
+params <- expand.grid(fam = fam, length_oc_int = length_oc_int) %>% 
+  left_join(data.frame(length_oc_int = 2:5, year_range_f = c(2014, 2015, 2014, 2014)))
+  
+for(x in 1:nrow(params)){
+  prepare_occurrence(family_filter = as.character(params$fam[x]), strict_filter = FALSE, 
+                     year_range = c(1995, params$year_range_f[x]), length_oc_int = params$length_oc_int[x])
 }
-
-
-
 
