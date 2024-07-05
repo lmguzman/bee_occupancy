@@ -20,8 +20,8 @@ count <- 1
 ## loop for every year of data 
 
 for(year in c(2001, 2004, 2006, 2008, 2011, 2013, 2016)){
- 
-  agriculture_cover <- raster(paste0('raw_data/agriculture/nlcd_', year, '_land_cover_l48_20210604/nlcd_',year,'_land_cover_l48_20210604.img'))
+
+  agriculture_cover <- raster(paste0('raw_data/agriculture/NLCD_landcover_2021_release_all_files_20230630/nlcd_',year,'_land_cover_l48_20210604.img'))
   
   ## extract the fraction of the county that is agriculture i.e. == 82
   

@@ -4,7 +4,10 @@ library(data.table)
 library(tidyr)
 library(units)
 
-######## Before running these functions, download and process environmental data from the environment directory
+#### These functions allow to process and compile environmental data
+#### Before running these functions, 
+#### download and process environmental data from the environment directory
+#### all of these functions depend on data processed in cleaned data which is provided for ease of analysi
 
 prepare_environmental_data <- function(year_range, length_oc_int){
   

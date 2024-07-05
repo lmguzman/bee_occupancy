@@ -4,6 +4,10 @@ library(dplyr)
 library(raster)
 library(sf)
 
+##### To obtain bee polygons contact Paige Chesshire from https://nsojournals.onlinelibrary.wiley.com/doi/full/10.1111/ecog.06584
+
+#### This data is needed to generate Figure S8 but not for the analysis 
+
 ## for each family since the polygon data is saved per family
 
 family_list <- c("Andrenidae","Apidae", "Colletidae", "Halictidae", "Megachilidae", "Melittidae")

@@ -20,7 +20,7 @@ sites <- readRDS("clean_data/sites/sites_counties.RDS")
 
 for(year in c(2001, 2004, 2006, 2008, 2011, 2013)){
   
-  land_cover <- raster(paste0('/Volumes/Rasters/USC/bee_occupancy/raw_data/agriculture/nlcd_', year, '_land_cover_l48_20210604/nlcd_',year,'_land_cover_l48_20210604.img'))
+  land_cover <- raster(paste0('raw_data/agriculture/NLCD_landcover_2021_release_all_files_20230630/nlcd_',year,'_land_cover_l48_20210604.img'))
   
   for(i in 1:nrow(sites)){
     land_cover_site <- extract(land_cover, sites[i,])
