@@ -1,4 +1,4 @@
-## Script to visualize main model trends (Figure 2, and Supplementary Figures S15)
+## Script to visualize main model trends (Figure 2, and Supplementary Figures S16)
 
 library(dplyr)
 library(ggplot2)
@@ -117,7 +117,7 @@ canag_effect_mb <- compiled_results %>%
 ## the effect of honey bees ##
 
 honey_bee_effect_mb <- compiled_results %>% 
-  filter(family != "ALL" & model %in% c("ms_area_honeytime_canagmb_16") & variable != "0") %>% 
+  filter(family != "ALL" & model %in% c("ms_area_honeytime_canag") & variable != "0" & model_type_ag == "canagmb") %>% 
   filter(variable == 'col') %>% 
   mutate(significant = ifelse((`X2.5.` < 0 & X97.5. < 0 )|(`X2.5.` > 0 & X97.5. > 0 ), "*", "")) %>% 
   mutate(positive = ifelse(mean < 0, 'negative', 'positive')) %>% 
@@ -139,7 +139,7 @@ honey_bee_effect_mb <- compiled_results %>%
 ## the effect of pesticides ##
 
 pesticide_effectmb <-compiled_results %>% 
-  filter(family != "ALL" & model %in% c("ms_area_honeytime_pestar_canagmb_15") & variable != "0") %>% 
+  filter(family != "ALL" & model %in% c("ms_area_honeytime_pestar_canag") & variable != "0" & model_type_ag == "canagmb") %>% 
   filter(variable == 'pest1') %>% 
   mutate(significant = ifelse((`X2.5.` < 0 & X97.5. < 0 )|(`X2.5.` > 0 & X97.5. > 0 ), "*", "")) %>% 
   mutate(positive = ifelse(mean < 0, 'negative', 'positive')) %>% 
@@ -187,7 +187,7 @@ canag_effect_abs <- compiled_results %>%
 ## the effect of honey bees ##
 
 honey_bee_effect_abs <- compiled_results %>% 
-  filter(family != "ALL" & model %in% c("ms_area_honeytime_canagabs_16") & variable != "0") %>% 
+  filter(family != "ALL" & model %in% c("ms_area_honeytime_canag") & variable != "0" & model_type_ag == "canagabs") %>% 
   filter(variable == 'col') %>% 
   mutate(significant = ifelse((`X2.5.` < 0 & X97.5. < 0 )|(`X2.5.` > 0 & X97.5. > 0 ), "*", "")) %>% 
   mutate(positive = ifelse(mean < 0, 'negative', 'positive')) %>% 
@@ -209,7 +209,7 @@ honey_bee_effect_abs <- compiled_results %>%
 ## the effect of pesticides ##
 
 pesticide_effectabs <-compiled_results %>% 
-  filter(family != "ALL" & model %in% c("ms_area_honeytime_pestar_canagabs_15") & variable != "0") %>% 
+  filter(family != "ALL" & model %in% c("ms_area_honeytime_pestar_canag") & variable != "0" & model_type_ag == "canagabs") %>% 
   filter(variable == 'pest1') %>% 
   mutate(significant = ifelse((`X2.5.` < 0 & X97.5. < 0 )|(`X2.5.` > 0 & X97.5. > 0 ), "*", "")) %>% 
   mutate(positive = ifelse(mean < 0, 'negative', 'positive')) %>% 
@@ -235,3 +235,61 @@ different_crops <- plot_grid(pesticide_effectmb, canag_effect_mb, honey_bee_effe
                                                                                   "D.", "E.", "F."))
 
 ggsave(different_crops, fil ="plots/model_results_dif_crops.pdf", width = 14)
+
+
+############ Neonics and Pyrethroids alone #########
+
+## the effect of neonics and pyrethroids  ##
+
+models_pest_data <- compiled_results %>% 
+  filter(family != "ALL" & model %in% c("ms_area_honeytime_neonic_canag", "ms_area_honeytime_pyr_canag") & variable != "0" & model_type_ag == "canag") %>% 
+  filter(variable == 'pest1') %>% 
+  mutate(family = str_replace(family, "\\|", ", ")) %>% 
+  mutate(significant = ifelse((`X2.5.` < 0 & X97.5. < 0 )|(`X2.5.` > 0 & X97.5. > 0 ), "*", "")) %>% 
+  mutate(positive = ifelse(mean < 0, 'negative', 'positive'))  %>% 
+  mutate(combined = paste0(mean, " (", `X2.5.`, ", ", `X97.5.`, ")", significant)) %>% 
+  mutate(model = str_remove(str_remove(model, 'ms_area_honeytime_'), "_canag"))
+  
+legend_plot <- ggplot(data = models_pest_data) +
+  geom_point(aes(x = mean, y = family, color = model), size = 4) +
+  geom_errorbarh(aes(xmin = `X2.5.`, xmax = `X97.5.`, y = family, color = model), linewidth = 2) +
+  scale_color_manual(values = c('#008080', '#653780'), labels = c("Neonicotinoids", "Pyrethroids"), name = "") +
+  theme_cowplot() +
+  theme(legend.text = element_text(size = 30), 
+        legend.position = 'bottom')
+
+pest_separated <- ggplot() +
+  geom_point(data = filter(models_pest_data, model == 'neonic'), aes(x = mean, y = family), size = 5, color= '#008080', position = position_nudge(y = 0.25)) +
+  geom_point(data = filter(models_pest_data, model == 'pyr'), aes(x = mean, y = family), size = 5, position = position_nudge(y = -0.25), color = '#653780') +
+  geom_errorbarh(data = filter(models_pest_data, model == 'neonic'), aes(xmin = `X2.5.`, xmax = `X97.5.`, y = family), height = 0, linewidth = 3 , color= '#008080', position = position_nudge(y = 0.25)) +
+  geom_errorbarh(data = filter(models_pest_data, model == 'pyr'), aes(xmin = `X2.5.`, xmax = `X97.5.`, y = family), height = 0, linewidth = 3, position = position_nudge(y = -0.25), color = '#653780') +
+  geom_vline(xintercept = 0, linetype="dashed", colour = 'grey', linewidth = 2) +
+  geom_text(data = filter(models_pest_data, model == 'neonic'), aes(x = 0.5, y = family, label = significant), size = 20, show.legend = FALSE, color= '#008080', position = position_nudge(y = 0.25))  +
+  geom_text(data = filter(models_pest_data, model == 'pyr'), aes(x = 0.5, y = family, label = significant), size = 20, show.legend = FALSE, position = position_nudge(y = -0.25), color = '#653780')  +
+  theme_cowplot() +
+  theme(legend.position = 'none', 
+        axis.text = element_text(size = 25), 
+        strip.background = element_blank(), 
+        axis.title = element_text(size = 25)) +
+  scale_x_continuous(limits = c(-1.3, 1)) +
+  scale_y_discrete(limits = rev)+
+  ylab("") +
+  xlab("Effect of Pesticide Use \n on Wild Bee Occupancy")
+
+pest_separated_legend <- plot_grid(pest_separated, get_legend(legend_plot), rel_heights = c(1, 0.2), ncol = 1, align = 'h')
+
+
+ggsave(pest_separated_legend, fil ="plots/model_results_dif_pesticides_together.pdf", width = 9)
+
+
+
+compiled_results %>% 
+  filter(family != "ALL" & model %in% c("ms_area_honeytime_neonic_canag", "ms_area_honeytime_pyr_canag") & variable != "0" & model_type_ag == "canag") %>% 
+  filter(variable == 'pest1') %>% 
+  mutate(family = str_replace(family, "\\|", ", ")) %>% 
+  mutate(significant = ifelse((`X2.5.` < 0 & X97.5. < 0 )|(`X2.5.` > 0 & X97.5. > 0 ), "*", "")) %>% 
+  mutate(positive = ifelse(mean < 0, 'negative', 'positive'))  %>% 
+  mutate(combined = paste0(mean, " (", `X2.5.`, ", ", `X97.5.`, ")", significant)) %>% 
+  select(model, combined, family) %>% 
+  mutate(model = str_remove(str_remove(model, 'ms_area_honeytime_'), "_canag")) %>% 
+  pivot_wider(names_from = 'model', values_from = 'combined')

@@ -15,8 +15,19 @@ sites <- readRDS("clean_data/sites/sites_counties.RDS")
 
 year <- 2008
   
+## download crop data
+
+options(timeout=500)
+
+urls <- c("https://www.nass.usda.gov/Research_and_Science/Cropland/Release/datasets/2008_30m_cdls.zip")
+
+download.file(urls, destfile = "raw_data/crops/2008_30m_cdls.zip")
+
+unzip("raw_data/crops/2008_30m_cdls.zip", exdir = "raw_data/crops/2008_30m_cdls")
+
 ## load crop data
-crop_cover <- raster(paste0('raw_data/crops/', year, '_30m_cdls/',year,'_30m_cdls.tif'))
+
+crop_cover <- raster('raw_data/crops/2008_30m_cdls/2008_30m_cdls.tif')
   
 ## extract all of the crop types in the each county and save per county
 
@@ -52,6 +63,8 @@ saveRDS(agriculture_all_year, 'clean_data/agriculture/crops_county.rds')
 agriculture_all_year <- readRDS('clean_data/agriculture/crops_county.rds')
 
 ## load and clean the pollinator attractiveness data from the USDA
+## which has been proceesed to go from PDF tables to csv tables
+#https://www.usda.gov/sites/default/files/documents/Attractiveness-of-Agriculture-Crops-to-Pollinating-Bees-Report-FINAL-Web-Version-Jan-3-2018.pdf
 
 pol_attc_land_use <- read.csv("raw_data/crops/pollinator_attractiveness 2.csv")
 
@@ -82,6 +95,21 @@ Crops_not_attractive_bb_sol <- pol_attractiveness %>%
   left_join(pol_attc_land_use) %>% 
   filter(Bumble.Bees == "-" | Solitary.Bees == '-') %>% 
   dplyr::select(Crop, Land_Cover)
+
+## crops not requiring pollination 
+
+Crops_not_requiring_pollination <- pol_attractiveness %>% 
+  left_join(pol_attc_land_use) %>% 
+  filter(Requires.Bee.Pollination == "No") %>% 
+  dplyr::select(Crop, Land_Cover)
+
+## get crops not attractive to all
+
+Crops_not_attractive_all <- pol_attractiveness %>% 
+  left_join(pol_attc_land_use) %>% 
+  filter(Bumble.Bees == "-" & Solitary.Bees == '-'& HB.Poll.1 == '-' & HB.Nec.1 == "-") %>% 
+  dplyr::select(Crop, Land_Cover)
+
 
 ## assign crop numbers to category names and join with the attractiveness
 

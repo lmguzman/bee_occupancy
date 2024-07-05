@@ -9,12 +9,15 @@ library(stringr)
 
 ## step 1: filter down data 
 
-## load data observation data 
+## download and load data observation data from Chesshire et al. 2023
 
-all_obs <- fread("raw_data/data/cleaned_contiguousUS_records.csv")
+url<- "https://figshare.com/ndownloader/files/35030872"
 
-all_obs <- fread("/Volumes/Rasters/USC/bee_occupancy/raw_data/data/cleaned_contiguousUS_records.csv")
+download.file(url, destfile = "raw_data/data/cleaned_contiguousUS_records.csv.zip")
 
+unzip("raw_data/data/cleaned_contiguousUS_records.csv.zip", exdir =  "raw_data/data")
+
+all_obs <- fread("raw_data/data/contiguousRecords_high_Only.csv")
 
 ## get unique locations and years
 

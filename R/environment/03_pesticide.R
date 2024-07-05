@@ -7,9 +7,20 @@ library(stringr)
 library(tidyr)
 library(stringr)
 
-## download county level pesticide data from https://water.usgs.gov/nawqa/pnsp/usage/maps/county-level/
+## download county level pesticide data 
 
-input_dir <- "/Volumes/Rasters/USC/bee_occupancy/raw_data/pesticide/pesticide_US/"
+years <- 1992:2012
+
+for(yr in years){
+  url <- paste0('https://water.usgs.gov/nawqa/pnsp/usage/maps/county-level/PesticideUseEstimates/EPest.county.estimates.',yr,'.txt')
+  download.file(url, paste0('raw_data/pesticide/EPest.county.estimates.',yr,'.txt'))
+}
+
+# 2013-2017
+# provided in raw data downloaded from https://www.sciencebase.gov/catalog/item/5e95c12282ce172707f2524e
+
+## read data and compile
+input_dir <- "raw_data/pesticide/"
 files_dir <- list.files(input_dir)
 
 ## create list of pesticides of interest -- compound names from above website
@@ -190,61 +201,3 @@ for(i in 1:length(files_dir)){
 other_all <- rbindlist(all) %>% 
   left_join(compounds_to_check, by = c('COMPOUND' = 'compound')) 
 
-other_all %>% 
-  group_by(YEAR, type) %>% 
-  summarise(total_kg = sum(EPEST_HIGH_KG)) %>% 
-  ggplot(aes(x = YEAR, y = total_kg)) + geom_bar(stat = "identity", aes(fill = type))
-
-
-other_all %>% 
-  group_by(YEAR, type) %>% 
-  summarise(total_kg = sum(EPEST_HIGH_KG)) %>% 
-  ggplot(aes(x = YEAR, y = total_kg)) + geom_bar(stat = "identity", aes(fill = type), 
-                                                 position = 'fill')
-
-
-raw <- other_all %>% 
-  filter(YEAR < 2015 & YEAR >=1994) %>% 
-  group_by(YEAR, type) %>% 
-  summarise(total_kg = sum(EPEST_HIGH_KG)) %>%
-  ungroup() %>% 
-  filter(!is.na(total_kg)) %>% 
-  ggplot(aes(x = YEAR, y = total_kg)) + 
-  geom_point(aes(colour = type)) +
-  geom_line(aes(colour = type)) +
-  ylab('Total Kg used') +
-  xlab('Year') + 
-  theme_cowplot() +labs(colour="Type of insecticide")+
-  theme(legend.position = 'bottom')+
-  scale_x_continuous(limits = c(1994, 2015.5))
-
-log_t <- other_all %>% 
-  filter(YEAR < 2015 & YEAR >=1994) %>% 
-  group_by(YEAR, type) %>% 
-  summarise(total_kg = sum(EPEST_HIGH_KG)) %>%
-  ungroup() %>% 
-  filter(!is.na(total_kg)) %>% 
-  ggplot(aes(x = YEAR, y = total_kg)) + 
-  geom_point(aes(colour = type)) +
-  geom_line(aes(colour = type)) +
-  ylab('Total Kg used (log)') +
-  xlab('Year') + 
-  theme_cowplot() +labs(colour=" ")+
-  scale_y_log10()+
-  theme(legend.position = 'none') +
-  scale_x_continuous(limits = c(1994, 2015.5))
-
-other_pesticided <- plot_grid(raw, log_t, align = 'hv', axis = "bt", labels =c("A.", "B."))
-
-ggsave(other_pesticided, filename= 'plots/other_pesticides.pdf', width = 12)
-
-
-### most used compound ##
-
-other_all %>% 
-  filter(YEAR < 2015 & YEAR >=1994) %>% 
-  group_by(COMPOUND, type) %>% 
-  summarise(total_tonne = sum(EPEST_HIGH_KG, na.rm = TRUE)*0.001) %>% 
-  group_by(type) %>% 
-  arrange(desc(total_tonne)) %>% 
-  slice(1:2) %>% View()

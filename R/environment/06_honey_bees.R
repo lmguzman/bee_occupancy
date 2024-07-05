@@ -28,7 +28,7 @@ saveRDS(inventory, "clean_data/honey_bees/colonies_time.rds")
 
 ## check distribution across states
 
-us_counties <- read_sf('/Volumes/Rasters/USC/bee_occupancy/raw_data/counties_states/cb_2018_us_state_20m/')
+us_counties <- read_sf('raw_data/counties_states/cb_2018_us_state_20m/')
 
 ## select only county and state codes
 

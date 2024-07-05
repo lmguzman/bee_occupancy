@@ -241,6 +241,8 @@ prepare_occurrence <- function(family_filter, strict_filter, year_range, length_
                       tmax = environmental_data$tmax_mat[site_ID,yr_ID], 
                       prec = environmental_data$prec_mat[site_ID,yr_ID],
                       pesticidearea = environmental_data$both_mat_area[site_ID,yr_ID],
+                      neonicarea = environmental_data$neonic_mat[site_ID,yr_ID],
+                      pyrarea = environmental_data$pyr_mat[site_ID,yr_ID],
                       agriculture = environmental_data$ag_mat[site_ID,yr_ID], 
                       countanimal = environmental_data$county_fan_mat[site_ID],
                       countanimalmb = environmental_data$county_fan_mat_mb[site_ID],
@@ -259,7 +261,24 @@ prepare_occurrence <- function(family_filter, strict_filter, year_range, length_
   
 }
 
-## prepare occurrence for each family 
+
+## prepare occurrence for main text for all families 
+
+fam <- c("Andrenidae", "Apidae", "Halictidae", 
+         "Megachilidae", "Colletidae|Melittidae")
+
+length_oc_int <- 3
+
+year_range <- c(1995, 2015)
+
+
+for(f in fam){
+  prepare_occurrence(family_filter = f, strict_filter = FALSE, 
+                     year_range = year_range, length_oc_int = length_oc_int)
+}
+
+
+## prepare occurrence for each family for all periods
 
 fam <- c("Andrenidae", "Apidae", "Halictidae", 
          "Megachilidae", "Colletidae|Melittidae")

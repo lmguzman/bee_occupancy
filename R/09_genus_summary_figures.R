@@ -37,7 +37,7 @@ for(f in fam){
   
   ## read data
   
-  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_both_pest_area_county_1995_2015_",f,"_ALLFALSE.rds"))
+  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_both_pest_area_county_1995_2015_3",f,"_ALLFALSE.rds"))
   
   species_directory <- data.frame(finalName = my.data$sp) %>% 
     mutate(ss = 1:n()) %>% 
@@ -51,7 +51,7 @@ for(f in fam){
   
   ## apa model 
   
-  res_summary_apa <- readRDS(paste0("model_outputs/res.summary_genus_filtered_agriregion_pest_area_county_both_1995_2015_ms_area_climate_canag_17_",f,"_ALLFALSE.rds"))
+  res_summary_apa <- readRDS(paste0("model_outputs/res.summary_genus_filtered_agriregion_pest_area_county_both_1995_2015_ms_area_climate_canag_",f,"_ALLFALSE.rds"))
   
   vars <- rownames(res_summary_apa$psrf$psrf)
   summ_apa <- get.summ(vars, res_summary_apa)
@@ -60,7 +60,7 @@ for(f in fam){
   
   ## honey bee model
   
-  res_summary_honey <- readRDS(paste0("model_outputs/res.summary_genus_filtered_agriregion_pest_area_county_both_1995_2015_ms_area_honeytime_canag_16_",f,"_ALLFALSE.rds"))
+  res_summary_honey <- readRDS(paste0("model_outputs/res.summary_genus_filtered_agriregion_pest_area_county_both_1995_2015_ms_area_honeytime_canag_",f,"_ALLFALSE.rds"))
   
   vars <- rownames(res_summary_honey$psrf$psrf)
   summ_honey <- get.summ(vars, res_summary_honey)
@@ -69,7 +69,7 @@ for(f in fam){
   
   ## pesticide model
   
-  res_summary_pesticide <- readRDS(paste0("model_outputs/res.summary_genus_filtered_agriregion_pest_area_county_both_1995_2015_ms_area_honeytime_pestar_canag_15_",f,"_ALLFALSE.rds"))
+  res_summary_pesticide <- readRDS(paste0("model_outputs/res.summary_genus_filtered_agriregion_pest_area_county_both_1995_2015_ms_area_honeytime_pestar_canag_",f,"_ALLFALSE.rds"))
   
   vars <- rownames(res_summary_pesticide$psrf$psrf)
   summ_pesticide <- get.summ(vars, res_summary_pesticide)
@@ -390,9 +390,9 @@ create_data_for_plots <- function(f){
 
   ## load model outputs and input data
   
-  res.summary <- readRDS(paste0("model_outputs/res.summary_genus_filtered_agriregion_pest_area_county_both_1995_2015_ms_area_honeytime_pestar_canag_15_", f,"_ALLFALSE.rds"))
+  res.summary <- readRDS(paste0("model_outputs/res.summary_genus_filtered_agriregion_pest_area_county_both_1995_2015_ms_area_honeytime_pestar_canag_", f,"_ALLFALSE.rds"))
   
-  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_both_pest_area_county_1995_2015_",f,"_ALLFALSE.rds"))
+  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_both_pest_area_county_1995_2015_3",f,"_ALLFALSE.rds"))
   
   ### re-organize model estimate chains ##
   
@@ -481,9 +481,9 @@ create_data_for_plots <- function(f){
   
   ## load model results and input data
   
-  res.summary <- readRDS(paste0("model_outputs/res.summary_genus_filtered_agriregion_pest_area_county_both_1995_2015_ms_area_honeytime_pestar_canag_15_", f,"_ALLFALSE.rds"))
+  res.summary <- readRDS(paste0("model_outputs/res.summary_genus_filtered_agriregion_pest_area_county_both_1995_2015_ms_area_honeytime_pestar_canag_", f,"_ALLFALSE.rds"))
   
-  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_both_pest_area_county_1995_2015_",f,"_ALLFALSE.rds"))
+  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_both_pest_area_county_1995_2015_3",f,"_ALLFALSE.rds"))
   
   ### assign correct chains ##
   
@@ -574,9 +574,9 @@ create_data_for_plots <- function(f){
   
   ## load model outputs and data 
   
-  res.summary <- readRDS(paste0("model_outputs/res.summary_genus_filtered_agriregion_pest_area_county_both_1995_2015_ms_area_climate_canag_17_", f,"_ALLFALSE.rds"))
+  res.summary <- readRDS(paste0("model_outputs/res.summary_genus_filtered_agriregion_pest_area_county_both_1995_2015_ms_area_climate_canag_", f,"_ALLFALSE.rds"))
   
-  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_both_pest_area_county_1995_2015_",f,"_ALLFALSE.rds"))
+  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_both_pest_area_county_1995_2015_3",f,"_ALLFALSE.rds"))
   
   ### assign correct chains ##
   

@@ -4,6 +4,8 @@ library(data.table)
 library(tidyr)
 library(units)
 
+######## Before running these functions, download and process environmental data from the environment directory
+
 prepare_environmental_data <- function(year_range, length_oc_int){
   
   # prepare temperature 
@@ -17,6 +19,10 @@ prepare_environmental_data <- function(year_range, length_oc_int){
   ## pesticides with area 
   
   both_mat_area <- prepare_pesticide(year_range, "both", area = TRUE, length_oc_int)
+  
+  neonic_mat_area <- prepare_pesticide(year_range, "neonics", area = TRUE, length_oc_int)
+  
+  pyr_mat_area <- prepare_pesticide(year_range, "pyr", area = TRUE, length_oc_int)
   
   ## prepare agriculture
   
@@ -51,6 +57,8 @@ prepare_environmental_data <- function(year_range, length_oc_int){
                                prec_mat = prec_mat[site_id,final_year],
                                ag_mat = ag_mat[site_id,final_year], 
                                both_mat_area = both_mat_area[site_id, final_year],
+                               neonic_mat = neonic_mat_area[site_id, final_year],
+                               pyr_mat = pyr_mat_area[site_id, final_year],
                                county_fan_mat = county_fan_mat[site_id,],
                                county_fan_mat_mb = county_fan_mat_mb[site_id,],
                                county_fan_mat_abs = county_fan_mat_abs[site_id,],

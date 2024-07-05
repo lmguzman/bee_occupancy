@@ -1,13 +1,18 @@
 ### Script to create sites based on counties ###
 
-
 library(sf)
 library(dplyr)
 library(tidyr)
 
-# Load shapefile for us counties
+# download and load shapefile for us counties
 
-us_counties <- read_sf('/Volumes/Rasters/USC/bee_occupancy/raw_data/pesticide/cb_2018_us_county_20m/cb_2018_us_county_20m.shp')
+urls <- c("https://www2.census.gov/geo/tiger/GENZ2018/shp/cb_2018_us_county_20m.zip")
+
+download.file(urls, destfile = "raw_data/sites/cb_2018_us_county_20m.zip")
+
+unzip("raw_data/sites/cb_2018_us_county_20m.zip", exdir = "raw_data/sites/cb_2018_us_county_20m")
+
+us_counties <- read_sf('raw_data/sites/cb_2018_us_county_20m')
 
 ## select only county and state codes
 

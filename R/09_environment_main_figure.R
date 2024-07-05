@@ -13,7 +13,7 @@ library(viridis)
 
 ######### summed pesticide load ########
 
-environment <- readRDS("clean_data/data_prepared/environment_counties_1995_2015.rds")
+environment <- readRDS("clean_data/data_prepared/environment_counties_1995_2015_3.rds")
 
 counties <- readRDS("clean_data/sites/sites_counties.RDS") %>% 
   mutate(site = paste0('s_', state_county))

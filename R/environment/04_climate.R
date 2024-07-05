@@ -9,6 +9,8 @@ library(sf)
 library(raster)
 
 ##### download data from chelsa time series https://chelsa-climate.org/timeseries/
+## using the 00_download_climate_rasters.sh
+## download to raw_data/climate/rasters
 
 ####### extract values from counties  ######
 
@@ -39,7 +41,7 @@ sites <- readRDS("clean_data/sites/sites_counties.RDS")
 
 ## run the extraction
 
-inputDir <- "/Volumes/Rasters/USC/bee_occupancy/raw_data/climate/rasters"
+inputDir <- "raw_data/climate/rasters"
 
 files <- list.files(inputDir, pattern = '.tif$', full.names = TRUE)
 
@@ -48,7 +50,7 @@ files <- list.files(inputDir, pattern = '.tif$', full.names = TRUE)
 
 all_site_envirem <- list()
 
-for(i in 687:length(files)){
+for(i in 1:length(files)){
   
   print(i)
   

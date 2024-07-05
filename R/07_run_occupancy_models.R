@@ -10,7 +10,7 @@ source("R/src/initialize.R")
 run_model <- function(model, family, run_len){
   
   ## load data
-  all_data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_both_pest_area_county_1995_2015_", family, "_ALLFALSE.rds" ))
+  all_data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_both_pest_area_county_1995_2015_3", family, "_ALLFALSE.rds" ))
   
   ### assign data to main vars
   

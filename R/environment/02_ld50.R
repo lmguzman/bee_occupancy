@@ -4,13 +4,13 @@ library(dplyr)
 library(stringr)
 library(data.table)
 
+### Data has been downloaded manually from https://cfpub.epa.gov/ecotox/index.cfm ##
+
 #### Neonicotinoids LD50 ####
 
 ### read terrestrial organism data from the ECOTOX website
 
 all_data_files <- list.files("raw_data/ecotox_report/", full.names = TRUE)
-
-all_data_files <- list.files("/Volumes/Rasters/USC/bee_occupancy/raw_data/ecotox_report/", full.names = TRUE)
 
 all_data_files <- all_data_files[str_detect(all_data_files, "Terrestrial")]
 

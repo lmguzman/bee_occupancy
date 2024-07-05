@@ -50,7 +50,7 @@ for(f in unique_results){
   
   ## extract the model type 
   
-  model <- str_extract(f, "ms_area_honeytime_pestar_canag|ms_area_climate_canag|ms_area_honeytime_canag")
+  model <- str_extract(f, "ms_area_honeytime_pestar_canag|ms_area_climate_canag|ms_area_honeytime_canag|ms_area_honeytime_pyr_canag|ms_area_honeytime_neonic_canag")
   
   ## type of ag
   
@@ -79,12 +79,5 @@ all_results <- compiled_results %>%
   mutate(family = ifelse(family == 'Colletidae', 'Colletidae|Melittidae', family))
 
 saveRDS(all_results, "model_outputs/all_results.rds")
-
-
-
-
-
-
-
 
 

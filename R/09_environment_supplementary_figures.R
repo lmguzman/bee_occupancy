@@ -12,7 +12,7 @@ library(broom)
 
 ## load environmental data and counties 
 
-environmental_data <- readRDS(paste0("clean_data/data_prepared/environment_counties_1995_2015.rds"))
+environmental_data <- readRDS(paste0("clean_data/data_prepared/environment_counties_1995_2015_3.rds"))
 
 counties <- readRDS("clean_data/sites/sites_counties.RDS")
 
@@ -186,6 +186,56 @@ all_compounds_pyr_2013 <- ggplot() +
 
 ggsave(all_compounds_pyr_2013, filename = "plots/environment/all_pyrethroids.pdf")
 
+########### Other insecticide compunds #########
+
+other_all <- readRDS("clean_data/pesticide/other_US_county.rds")
+
+raw <- other_all %>% 
+  filter(YEAR < 2015 & YEAR >=1994) %>% 
+  group_by(YEAR, type) %>% 
+  summarise(total_kg = sum(EPEST_HIGH_KG)) %>%
+  ungroup() %>% 
+  filter(!is.na(total_kg)) %>% 
+  ggplot(aes(x = YEAR, y = total_kg)) + 
+  geom_point(aes(colour = type)) +
+  geom_line(aes(colour = type)) +
+  ylab('Total Kg used') +
+  xlab('Year') + 
+  theme_cowplot() +labs(colour="Type of insecticide")+
+  theme(legend.position = 'bottom')+
+  scale_x_continuous(limits = c(1994, 2015.5))
+
+log_t <- other_all %>% 
+  filter(YEAR < 2015 & YEAR >=1994) %>% 
+  group_by(YEAR, type) %>% 
+  summarise(total_kg = sum(EPEST_HIGH_KG)) %>%
+  ungroup() %>% 
+  filter(!is.na(total_kg)) %>% 
+  ggplot(aes(x = YEAR, y = total_kg)) + 
+  geom_point(aes(colour = type)) +
+  geom_line(aes(colour = type)) +
+  ylab('Total Kg used (log)') +
+  xlab('Year') + 
+  theme_cowplot() +labs(colour=" ")+
+  scale_y_log10()+
+  theme(legend.position = 'none') +
+  scale_x_continuous(limits = c(1994, 2015.5))
+
+other_pesticides <- plot_grid(raw, log_t, align = 'hv', axis = "bt", labels =c("A.", "B."))
+
+ggsave(other_pesticides, filename= 'plots/other_pesticides.pdf', width = 12)
+
+### check which are the most used compounds Figure S6 ##
+
+other_all %>% 
+  filter(YEAR < 2015 & YEAR >=1994) %>% 
+  group_by(COMPOUND, type) %>% 
+  summarise(total_tonne = sum(EPEST_HIGH_KG, na.rm = TRUE)*0.001) %>% 
+  group_by(type) %>% 
+  arrange(desc(total_tonne)) %>% 
+  slice(1:2) %>% View()
+
+
 ####### Information for Table S1 ######
 
 ### LD 50 of all compounds ##
@@ -199,9 +249,9 @@ neonic_raw %>%
   mutate(COMPOUND = str_to_title(COMPOUND))
 
 
-##### Figure S6 ########
+##### Figure S7 ########
 
-environment <- readRDS("clean_data/data_prepared/environment_counties_1995_2015.rds")
+environment <- readRDS("clean_data/data_prepared/environment_counties_1995_2015_3.rds")
 
 counties <- readRDS("clean_data/sites/sites_counties.RDS") %>% 
   mutate(site = paste0('s_', state_county))
@@ -287,13 +337,13 @@ agriculture_comparison <- plot_grid(main_ag, animal_pollinated_ag, animal_pollin
 ggsave(agriculture_comparison, file = "plots/environment/agriculture_comparison.pdf", width = 10)
 
 
-####### Figure S7 #######
+####### Figure S8 #######
 
 ### correlation between animal pollinated agriculture and pesticide use ###
 
 library(broom)
 
-env_all <- readRDS("clean_data/data_prepared/environment_counties_1995_2015.rds")
+env_all <- readRDS("clean_data/data_prepared/environment_counties_1995_2015_3.rds")
 
 fam <- c("Andrenidae", "Apidae", "Halictidae", 
          "Megachilidae", "Colletidae|Melittidae")
@@ -306,7 +356,7 @@ for(f in fam){
   
   # load data
   
-  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_both_pest_area_county_1995_2015_",f,"_ALLFALSE.rds"))
+  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_both_pest_area_county_1995_2015_3",f,"_ALLFALSE.rds"))
   
   ## calculate correlation
   
@@ -342,7 +392,7 @@ ggsave(correlations_all, file = "plots/environment/correlation_pest_APA.pdf", wi
 
 
 
-###### Figure S8 ##########
+###### Figure S9 ##########
 
 expected_richness <- readRDS('clean_data/native_expected/expected_richness.rds')
 
@@ -385,7 +435,7 @@ ggsave(expected_bees_transform, file = 'plots/expected_bees_transform.pdf')
 
 
 
-######## Figure S9 #######
+######## Figure S10 #######
 
 ### number of sites and sites modeled for each family ###
 
@@ -399,7 +449,7 @@ counties_modelled_plot <- list()
 
 for(f in fam){
   
-  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_both_pest_area_county_1995_2015_",f,"_ALLFALSE.rds"))
+  my.data <- readRDS(paste0("clean_data/data_prepared/my_data_env_genus_filtered_trait_agriregion_both_pest_area_county_1995_2015_3",f,"_ALLFALSE.rds"))
   
   ## check number of sites and species 
   print(f)
