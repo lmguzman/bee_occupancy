@@ -1,4 +1,4 @@
-####### Script to run occupancy models ###### 
+####### Script to run occupancy models for neonics and pyrethroids separately ###### 
 ## note, the short version of the for loop takes about ~24 hrs
 ## the long version can take about a week
 ## you will need at least 45 GB of RAM memory to run the for loop

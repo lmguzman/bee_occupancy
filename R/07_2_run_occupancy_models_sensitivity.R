@@ -1,6 +1,6 @@
-####### Script to run occupancy models ###### 
-## note, the short version of the for loop takes about ~24 hrs
-## the long version can take about a week
+####### Script to run occupancy models changing the number of eras ###### 
+## note, the short version of the for loop takes about ~3 days
+## the long version can take about a week or more 
 ## you will need at least 45 GB of RAM memory to run the for loop
 
 library(stringr)
